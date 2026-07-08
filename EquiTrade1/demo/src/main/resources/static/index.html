@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EquiTrade</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="hero">
+    <div>
+      <p class="eyebrow">EquiTrade Dashboard</p>
+      <h1>Trade stocks with a simple, modern experience.</h1>
+      <p>Create an account, explore available stocks, and manage your portfolio from one place.</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card auth-grid">
+      <div class="form-card">
+        <h2>Register</h2>
+        <form id="registerForm">
+          <input id="registerUsername" placeholder="Username" required />
+          <input id="registerEmail" type="email" placeholder="Email" required />
+          <input id="registerPassword" type="password" placeholder="Password" required />
+          <button type="submit">Register</button>
+        </form>
+        <p id="registerMessage" class="message"></p>
+      </div>
+
+      <div class="form-card">
+        <h2>Login</h2>
+        <form id="loginForm">
+          <input id="loginEmail" type="email" placeholder="Email" required />
+          <input id="loginPassword" type="password" placeholder="Password" required />
+          <button type="submit">Login</button>
+        </form>
+        <p id="loginMessage" class="message"></p>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-heading">
+        <h2>Market Stocks</h2>
+        <button id="refreshStocksBtn" class="secondary">Refresh</button>
+      </div>
+      <div id="stockList" class="stock-grid"></div>
+    </section>
+
+    <section class="card">
+      <div class="section-heading">
+        <h2>Portfolio & Trade</h2>
+      </div>
+      <div class="trade-layout">
+        <div class="form-card">
+          <label for="userIdInput">User ID</label>
+          <input id="userIdInput" type="number" placeholder="Enter your user ID" />
+          <button id="viewPortfolioBtn">View Portfolio</button>
+          <form id="buyForm" class="spacing-top">
+            <label for="buyStockId">Stock ID</label>
+            <input id="buyStockId" type="number" placeholder="Stock ID" required />
+            <label for="buyQuantity">Quantity</label>
+            <input id="buyQuantity" type="number" min="1" placeholder="Quantity" required />
+            <button type="submit">Buy Stock</button>
+          </form>
+          <p id="tradeMessage" class="message"></p>
+        </div>
+
+        <div class="portfolio-card">
+          <h3>Your Holdings</h3>
+          <div id="portfolioList" class="portfolio-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-heading">
+        <h2>Admin Panel</h2>
+        <button id="loadAdminStocksBtn" class="secondary">Load Stocks</button>
+      </div>
+      <div id="adminStockList" class="stock-grid"></div>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

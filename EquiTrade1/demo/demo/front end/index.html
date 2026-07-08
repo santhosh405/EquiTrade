@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EquiTrade · Advanced Trading Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">E</div>
+        <div>
+          <p class="brand-label">EquiTrade</p>
+          <span class="brand-slogan">Pro trading made simple</span>
+        </div>
+      </div>
+      <nav class="nav-links">
+        <a href="#market">Market</a>
+        <a href="#trade">Trade</a>
+        <a href="#portfolio">Portfolio</a>
+        <a href="#admin">Admin</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero-panel">
+        <div class="hero-copy">
+          <p class="eyebrow">Live stock trading</p>
+          <h1>Modern stock trading for everyday investors.</h1>
+          <p>Build your portfolio, follow market trends, and execute trades with a clean interface designed for performance.</p>
+          <div class="hero-actions">
+            <button id="refreshStocksBtn" class="primary">Refresh market</button>
+            <button id="viewPortfolioBtn" class="secondary">View portfolio</button>
+          </div>
+        </div>
+        <div class="hero-cards">
+          <article class="stat-card">
+            <p class="stat-label">Live Stocks</p>
+            <h2 id="stockCount">0</h2>
+          </article>
+          <article class="stat-card soft-card">
+            <p class="stat-label">Active users</p>
+            <h2>100+</h2>
+          </article>
+          <article class="stat-card soft-card">
+            <p class="stat-label">Supported trades</p>
+            <h2>Buy / Sell</h2>
+          </article>
+        </div>
+      </section>
+
+      <section class="grid-section" id="market">
+        <div class="section-header">
+          <div>
+            <h2>Market Overview</h2>
+            <p>Search and browse the latest available stocks in your portfolio universe.</p>
+          </div>
+          <div class="input-group">
+            <input id="stockSearch" type="search" placeholder="Search stocks by symbol or company" />
+          </div>
+        </div>
+        <div id="stockList" class="market-grid"></div>
+      </section>
+
+      <section class="grid-section trade-section" id="trade">
+        <div class="trade-panel card-panel">
+          <div class="panel-header">
+            <h2>Trade Desk</h2>
+            <span>Execute purchases quickly.</span>
+          </div>
+          <form id="buyForm" class="trade-form">
+            <div class="field-row">
+              <label for="userIdInput">User ID</label>
+              <input id="userIdInput" type="number" placeholder="Your user ID" />
+            </div>
+            <div class="field-row">
+              <label for="buyStockId">Stock ID</label>
+              <input id="buyStockId" type="number" placeholder="Stock ID" required />
+            </div>
+            <div class="field-row">
+              <label for="buyQuantity">Quantity</label>
+              <input id="buyQuantity" type="number" min="1" placeholder="Quantity" required />
+            </div>
+            <button type="submit" class="primary">Buy stock</button>
+            <p id="tradeMessage" class="status-message"></p>
+          </form>
+        </div>
+        <div class="portfolio-panel card-panel" id="portfolio">
+          <div class="panel-header">
+            <h2>Portfolio Snapshot</h2>
+            <span>Holdings updated in real time.</span>
+          </div>
+          <div class="portfolio-table-wrapper">
+            <table class="portfolio-table">
+              <thead>
+                <tr>
+                  <th>Stock</th>
+                  <th>Symbol</th>
+                  <th>Quantity</th>
+                </tr>
+              </thead>
+              <tbody id="portfolioList">
+                <tr><td colspan="3">Enter User ID and click 'View portfolio'.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid-section" id="admin">
+        <div class="section-header">
+          <div>
+            <h2>Admin Control</h2>
+            <p>Review current stocks and remove any outdated listings.</p>
+          </div>
+          <button id="loadAdminStocksBtn" class="secondary">Reload admin stocks</button>
+        </div>
+        <div id="adminStockList" class="market-grid"></div>
+      </section>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
