@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stock Detail | EquiTrade</title>
+    <meta name="description" content="Detailed historical performance, key stats and execution desk for tracked stocks." />
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/api.js" defer></script>
+    <script src="js/auth.js" defer></script>
+    <script src="js/ui.js" defer></script>
+    <script src="js/components.js" defer></script>
+  </head>
+  <body data-page="market">
+    <main class="page-shell">
+      <div class="container">
+        <!-- Breadcrumb & Back button -->
+        <div style="margin-bottom: 16px;">
+          <a class="btn btn-ghost" href="market.html" style="padding: 6px 12px; font-size: 0.85rem;">
+            ← Back to Market Board
+          </a>
+        </div>
+
+        <section class="section" style="padding-bottom: 16px;">
+          <div class="detail-layout">
+            <!-- Stock Primary Info Card -->
+            <div class="panel-card glass" id="stockDetail">
+              <div class="skeleton skeleton-card" style="height: 180px;"></div>
+            </div>
+
+            <!-- Key Stats Sidebar -->
+            <aside class="panel-card glass" id="stockStats">
+              <div class="skeleton skeleton-card" style="height: 180px;"></div>
+            </aside>
+          </div>
+        </section>
+
+        <!-- Chart Section with 1D, 1W, 1M, 1Y switches -->
+        <section class="section chart-box glass">
+          <div class="stock-header" style="flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
+            <div>
+              <h2 style="margin: 0; font-size: 1.35rem;">Price Trajectory</h2>
+              <div class="section-subtitle" style="margin-top: 4px;">Interactive price action chart with dynamic range scaling.</div>
+            </div>
+            <div class="range-switch">
+              <button class="range-btn active" data-range="1D" type="button">1D</button>
+              <button class="range-btn" data-range="1W" type="button">1W</button>
+              <button class="range-btn" data-range="1M" type="button">1M</button>
+              <button class="range-btn" data-range="1Y" type="button">1Y</button>
+            </div>
+          </div>
+          <div class="chart-wrap" style="height: 380px; position: relative;">
+            <canvas id="stockChart"></canvas>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      function getQueryParam(name) {
+        const params = new URLSearchParams(window.location.search);
+        return params.get(name) || '';
+      }
+
+      let chartInstance = null;
+      let activeRange = '1D';
+      let currentStockData = null;
+      let livePollTimer = null;
+
+      function renderChart(labels, values, positive) {
+        const ctx = document.getElementById('stockChart');
+        if (!ctx) return;
+
+        if (chartInstance) {
+          chartInstance.destroy();
+        }
+
+        const borderColor = positive ? '#22c55e' : '#f87171';
+        const bgGradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 360);
+        bgGradient.addColorStop(0, positive ? 'rgba(34, 197, 94, 0.35)' : 'rgba(248, 113, 113, 0.35)');
+        bgGradient.addColorStop(1, 'rgba(15, 26, 41, 0.0)');
+
+        chartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [{
+              label: 'Price (₹)',
+              data: values,
+              borderColor,
+              borderWidth: 2.8,
+              backgroundColor: bgGradient,
+              pointRadius: labels.length > 20 ? 0 : 3,
+              pointHoverRadius: 6,
+              pointBackgroundColor: borderColor,
+              fill: true,
+              tension: 0.32,
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+              intersect: false,
+              mode: 'index',
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: 'rgba(12, 22, 36, 0.95)',
+                titleColor: '#edf5ff',
+                bodyColor: '#22c55e',
+                borderColor: 'rgba(148, 163, 184, 0.25)',
+                borderWidth: 1,
+                padding: 12,
+                displayColors: false,
+                callbacks: {
+                  label: (ctx) => `Price: ${formatCurrency(ctx.parsed.y)}`
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { color: 'rgba(148, 163, 184, 0.08)' },
+                ticks: { color: '#8da4bd', maxTicksLimit: 8 }
+              },
+              y: {
+                grid: { color: 'rgba(148, 163, 184, 0.08)' },
+                ticks: {
+                  color: '#8da4bd',
+                  callback: (value) => '₹' + Number(value).toLocaleString('en-IN')
+                }
+              }
+            }
+          }
+        });
+      }
+
+      function formatChartLabels(historyList, range) {
+        return historyList.map(item => {
+          const d = new Date(item.recordedAt);
+          if (range === '1D') {
+            return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          } else if (range === '1W' || range === '1M') {
+            return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+          } else {
+            return d.toLocaleDateString([], { month: 'short', year: '2-digit' });
+          }
+        });
+      }
+
+      async function loadStockDetails() {
+        const symbol = getQueryParam('symbol');
+        if (!symbol) {
+          window.location.href = 'market.html';
+          return;
+        }
+
+        try {
+          showPageLoader();
+          const stock = await apiGet(`/api/stocks/symbol/${encodeURIComponent(symbol)}`);
+          currentStockData = stock;
+
+          const positive = Number(stock.changePercent) >= 0;
+          const arrow = positive ? '▲' : '▼';
+          const sign = positive ? '+' : '';
+
+          document.getElementById('stockDetail').innerHTML = `
+            <div class="stock-header">
+              <div>
+                <span class="eyebrow" style="color:var(--primary); font-weight:700;">${stock.symbol}</span>
+                <h1 style="margin: 8px 0 4px; font-size: 1.8rem;">${stock.companyName}</h1>
+                <div style="color: var(--muted); font-size: 0.85rem;">Sector: <strong>${stock.sector || 'General'}</strong></div>
+              </div>
+              <div style="text-align: right;">
+                <span class="stock-chip ${positive ? 'positive' : 'negative'}" style="font-size: 0.95rem; padding: 6px 12px;">
+                  ${arrow} ${sign}${Number(stock.changePercent || 0).toFixed(2)}%
+                </span>
+              </div>
+            </div>
+
+            <div style="margin: 20px 0 16px;">
+              <div style="font-size:0.8rem; color:var(--muted); text-transform:uppercase;">Current Market Price</div>
+              <div class="stock-price" id="liveStockPrice" style="font-size: 2.2rem; font-weight: 800; margin-top: 4px;">
+                ${formatCurrency(stock.price)}
+              </div>
+            </div>
+
+            <div class="link-row" style="margin-top: 20px; display:flex; gap:12px;">
+              <a class="btn btn-primary" href="trade.html?symbol=${encodeURIComponent(stock.symbol)}&action=buy" style="flex:1; text-align:center;">
+                Buy ${stock.symbol}
+              </a>
+              <a class="btn btn-secondary" href="trade.html?symbol=${encodeURIComponent(stock.symbol)}&action=sell" style="flex:1; text-align:center;">
+                Sell Position
+              </a>
+            </div>
+          `;
+
+          const lastClose = stock.price * (1 - (stock.changePercent / 100));
+          const dayLow = stock.price * 0.965;
+          const dayHigh = stock.price * 1.035;
+
+          document.getElementById('stockStats').innerHTML = `
+            <div class="section-header" style="margin-bottom: 16px;">
+              <h3 style="margin:0; font-size:1.15rem;">Key Statistics</h3>
+            </div>
+            <div class="meta-grid">
+              <div class="meta-item">
+                <div class="label">Day Range</div>
+                <div class="value" style="font-size:0.95rem;">${formatCurrency(dayLow)} - ${formatCurrency(dayHigh)}</div>
+              </div>
+              <div class="meta-item">
+                <div class="label">Prev Close</div>
+                <div class="value" style="font-size:0.95rem;">${formatCurrency(lastClose)}</div>
+              </div>
+              <div class="meta-item">
+                <div class="label">Primary Sector</div>
+                <div class="value" style="font-size:0.95rem;">${stock.sector || 'General'}</div>
+              </div>
+              <div class="meta-item">
+                <div class="label">Market Sentiment</div>
+                <div class="value ${positive ? 'trend-up' : 'trend-down'}" style="font-size:0.95rem; font-weight:700;">
+                  ${positive ? 'Bullish' : 'Bearish'}
+                </div>
+              </div>
+            </div>
+          `;
+
+          await loadHistory(activeRange);
+
+        } catch (error) {
+          showToast(error.message || 'Unable to load stock details.', 'error');
+        } finally {
+          hidePageLoader();
+        }
+      }
+
+      async function loadHistory(range) {
+        const symbol = getQueryParam('symbol');
+        try {
+          const history = await apiGet(`/api/stocks/${encodeURIComponent(symbol)}/history?range=${range}`);
+          const labels = formatChartLabels(history, range);
+          const values = history.map(item => item.price);
+          const positive = Number(currentStockData?.changePercent || 0) >= 0;
+          renderChart(labels, values, positive);
+        } catch (err) {
+          showToast('Could not load price chart.', 'error');
+        }
+      }
+
+      // Range button handlers
+      document.querySelectorAll('.range-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          activeRange = btn.dataset.range;
+          await loadHistory(activeRange);
+        });
+      });
+
+      // Live price ticker
+      async function refreshLivePrice() {
+        const symbol = getQueryParam('symbol');
+        if (!symbol) return;
+        try {
+          const updated = await apiGet(`/api/stocks/symbol/${encodeURIComponent(symbol)}`);
+          if (updated && currentStockData) {
+            const priceEl = document.getElementById('liveStockPrice');
+            if (priceEl && updated.price !== currentStockData.price) {
+              const wentUp = updated.price > currentStockData.price;
+              priceEl.textContent = formatCurrency(updated.price);
+
+              priceEl.classList.remove('price-flash-up', 'price-flash-down');
+              void priceEl.offsetWidth;
+              priceEl.classList.add(wentUp ? 'price-flash-up' : 'price-flash-down');
+
+              setTimeout(() => {
+                priceEl.classList.remove('price-flash-up', 'price-flash-down');
+              }, 1400);
+
+              currentStockData = updated;
+            }
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        loadStockDetails();
+        livePollTimer = setInterval(refreshLivePrice, 4000);
+      });
+
+      window.addEventListener('beforeunload', () => {
+        if (livePollTimer) clearInterval(livePollTimer);
+      });
+    </script>
+  </body>
+</html>

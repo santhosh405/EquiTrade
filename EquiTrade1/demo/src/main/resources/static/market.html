@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Markets | EquiTrade Equity Simulator</title>
+    <meta name="description" content="Explore real-time NSE equities, technical sparklines, sector heatmap, and execute practice trades." />
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+    <link rel="stylesheet" href="css/tokens.css" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <script src="js/api.js" defer></script>
+    <script src="js/auth.js" defer></script>
+    <script src="js/ui.js" defer></script>
+    <script src="js/components.js" defer></script>
+    <style>
+      .watchlist-star {
+        cursor: pointer;
+        color: var(--color-slate);
+        font-size: 1.1rem;
+        transition: color var(--transition-fast);
+        user-select: none;
+      }
+      .watchlist-star.active {
+        color: #F59E0B;
+      }
+      .density-toggle {
+        display: inline-flex;
+        background-color: var(--color-panel);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-sm);
+        padding: 2px;
+      }
+      .density-btn {
+        padding: 2px 8px;
+        font-size: var(--font-size-xs);
+        color: var(--color-slate);
+        border-radius: var(--radius-xs);
+      }
+      .density-btn.active {
+        background-color: var(--color-surface);
+        color: var(--color-ink);
+        font-weight: var(--font-weight-semibold);
+      }
+      .view-toggle-group {
+        display: inline-flex;
+        background-color: var(--color-panel);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-sm);
+        padding: 2px;
+      }
+      .view-btn {
+        padding: 4px 10px;
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-medium);
+        color: var(--color-slate);
+        border-radius: var(--radius-xs);
+      }
+      .view-btn.active {
+        background-color: var(--color-surface);
+        color: var(--color-ink);
+        font-weight: var(--font-weight-semibold);
+        box-shadow: 0 1px 2px rgba(20, 25, 28, 0.05);
+      }
+      /* Cards View Grid */
+      .market-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: var(--space-4);
+      }
+      .market-stock-card {
+        background-color: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        padding: var(--space-4);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: var(--space-3);
+      }
+      /* Heatmap Sector Container */
+      .sector-group {
+        margin-bottom: var(--space-5);
+      }
+      .sector-group-title {
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-semibold);
+        color: var(--color-slate);
+        margin-bottom: var(--space-2);
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+      }
+    </style>
+  </head>
+  <body data-page="market">
+    <main class="page-shell">
+      <div class="container">
+        
+        <!-- Header & Top Controls -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);">
+          <div>
+            <h1 style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); letter-spacing: -0.02em;">NSE Markets</h1>
+            <div style="font-size: var(--font-size-sm); color: var(--color-slate); margin-top: 2px;">
+              Live Indian equity tracking with instant practice execution.
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;">
+            <!-- Row Density Toggle (for Table View) -->
+            <div class="density-toggle" id="densityToggle">
+              <button type="button" class="density-btn active" data-density="regular">Regular</button>
+              <button type="button" class="density-btn" data-density="compact">Compact</button>
+            </div>
+
+            <!-- Table / Cards / Heatmap View Switch -->
+            <div class="view-toggle-group" id="viewToggle">
+              <button type="button" class="view-btn active" data-view="table">Table</button>
+              <button type="button" class="view-btn" data-view="cards">Cards</button>
+              <button type="button" class="view-btn" data-view="heatmap">Heatmap</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter & Search Toolbar -->
+        <div class="panel" style="padding: var(--space-3) var(--space-4); margin-bottom: var(--space-4);">
+          <div style="display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap;">
+            <!-- Search Input -->
+            <div style="flex: 2; min-width: 220px;">
+              <input type="text" id="marketSearch" class="text-input" placeholder="Search by symbol or name (e.g. RELIANCE, TCS)..." />
+            </div>
+
+            <!-- Sector Filter -->
+            <div style="flex: 1; min-width: 140px;">
+              <select id="sectorFilter" class="select-input">
+                <option value="">All Sectors</option>
+              </select>
+            </div>
+
+            <!-- Movement Filter -->
+            <div style="flex: 1; min-width: 140px;">
+              <select id="movementFilter" class="select-input">
+                <option value="all">All Movements</option>
+                <option value="gainers">Gainers Only (+)</option>
+                <option value="losers">Pullbacks Only (-)</option>
+                <option value="watchlist">Watchlist Only (★)</option>
+              </select>
+            </div>
+
+            <!-- Sort By -->
+            <div style="flex: 1; min-width: 150px;">
+              <select id="sortBy" class="select-input">
+                <option value="change_desc">Top Gainers (%)</option>
+                <option value="change_asc">Top Pullbacks (%)</option>
+                <option value="price_desc">Price: High to Low</option>
+                <option value="price_asc">Price: Low to High</option>
+                <option value="symbol_asc">Symbol: A to Z</option>
+              </select>
+            </div>
+
+            <button type="button" id="resetFiltersBtn" class="btn btn-ghost btn-sm">Reset</button>
+          </div>
+        </div>
+
+        <!-- =================================================================
+             VIEW 1: TABLE VIEW (Default, Sticky Header, Dense Toggle)
+             ================================================================= -->
+        <div id="tableView" class="table-panel">
+          <div class="table-wrap" style="max-height: 720px; overflow-y: auto;">
+            <table class="trading-table" id="marketTable">
+              <thead>
+                <tr>
+                  <th class="text-center" style="width: 40px;">★</th>
+                  <th class="text-left sortable" data-sort="symbol">Symbol</th>
+                  <th class="text-left">Company</th>
+                  <th class="text-right sortable" data-sort="price">Last Price</th>
+                  <th class="text-right sortable" data-sort="change">Day Change</th>
+                  <th class="text-center" style="width: 120px;">Trend (30D)</th>
+                  <th class="text-right col-hide-sm">Volume</th>
+                  <th class="text-right col-hide-sm">Sector</th>
+                  <th class="text-center" style="width: 140px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="marketTableBody">
+                <tr><td colspan="9"><div class="skeleton" style="height: 38px; margin: 4px 0;"></div></td></tr>
+                <tr><td colspan="9"><div class="skeleton" style="height: 38px; margin: 4px 0;"></div></td></tr>
+                <tr><td colspan="9"><div class="skeleton" style="height: 38px; margin: 4px 0;"></div></td></tr>
+                <tr><td colspan="9"><div class="skeleton" style="height: 38px; margin: 4px 0;"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- =================================================================
+             VIEW 2: CARDS VIEW
+             ================================================================= -->
+        <div id="cardsView" class="market-cards-grid hidden"></div>
+
+        <!-- =================================================================
+             VIEW 3: HEATMAP VIEW (Finviz-style by Sector)
+             ================================================================= -->
+        <div id="heatmapView" class="panel hidden" style="padding: var(--space-4);">
+          <div id="heatmapContainer"></div>
+        </div>
+
+      </div>
+    </main>
+
+    <script>
+      let masterStocks = [];
+      let currentView = 'table';
+      let currentDensity = 'regular';
+      let watchlist = new Set(JSON.parse(localStorage.getItem('equitrade_watchlist') || '[]'));
+
+      document.addEventListener('DOMContentLoaded', async () => {
+        setupToolbarEvents();
+        await loadMarketsData();
+
+        // Auto refresh every 5 seconds for simulated ticks
+        setInterval(async () => {
+          try {
+            const fresh = await apiGet('/api/stocks/live');
+            if (fresh && fresh.length) {
+              masterStocks = fresh;
+              renderCurrentView(false); // don't redraw full DOM if typing
+            }
+          } catch (e) {}
+        }, 5000);
+      });
+
+      async function loadMarketsData() {
+        try {
+          masterStocks = await apiGet('/api/stocks/live');
+          populateSectorFilter();
+          renderCurrentView(true);
+        } catch (error) {
+          showToast(error.message || 'Unable to load market data.', 'error');
+        }
+      }
+
+      function populateSectorFilter() {
+        const sectorSelect = document.getElementById('sectorFilter');
+        const sectors = Array.from(new Set(masterStocks.map(s => s.sector || 'General'))).sort();
+        sectorSelect.innerHTML = '<option value="">All Sectors</option>' +
+          sectors.map(sec => `<option value="${sec}">${sec}</option>`).join('');
+      }
+
+      function getFilteredStocks() {
+        const query = (document.getElementById('marketSearch').value || '').trim().toLowerCase();
+        const sector = document.getElementById('sectorFilter').value;
+        const movement = document.getElementById('movementFilter').value;
+        const sort = document.getElementById('sortBy').value;
+
+        let filtered = masterStocks.filter(stock => {
+          const sym = (stock.symbol || '').toLowerCase();
+          const comp = (stock.companyName || '').toLowerCase();
+          const matchesQuery = !query || sym.includes(query) || comp.includes(query);
+          const matchesSector = !sector || stock.sector === sector;
+
+          let matchesMovement = true;
+          if (movement === 'gainers') matchesMovement = Number(stock.changePercent) > 0;
+          else if (movement === 'losers') matchesMovement = Number(stock.changePercent) < 0;
+          else if (movement === 'watchlist') matchesMovement = watchlist.has(stock.symbol);
+
+          return matchesQuery && matchesSector && matchesMovement;
+        });
+
+        // Sorting
+        filtered.sort((a, b) => {
+          if (sort === 'price_desc') return b.price - a.price;
+          if (sort === 'price_asc') return a.price - b.price;
+          if (sort === 'change_desc') return b.changePercent - a.changePercent;
+          if (sort === 'change_asc') return a.changePercent - b.changePercent;
+          if (sort === 'symbol_asc') return a.symbol.localeCompare(b.symbol);
+          return 0;
+        });
+
+        return filtered;
+      }
+
+      function renderCurrentView(fullRedraw = true) {
+        const stocks = getFilteredStocks();
+
+        if (currentView === 'table') {
+          renderTableView(stocks);
+        } else if (currentView === 'cards') {
+          renderCardsView(stocks);
+        } else if (currentView === 'heatmap') {
+          renderHeatmapView(stocks);
+        }
+      }
+
+      // ----------------------------------------------------------------------
+      // View 1: Table View
+      // ----------------------------------------------------------------------
+      function renderTableView(stocks) {
+        const tbody = document.getElementById('marketTableBody');
+        const table = document.getElementById('marketTable');
+        
+        if (currentDensity === 'compact') {
+          table.classList.add('dense');
+        } else {
+          table.classList.remove('dense');
+        }
+
+        if (!stocks.length) {
+          tbody.innerHTML = '<tr><td colspan="9" class="text-center" style="padding: 32px; color: var(--color-slate);">No securities match your filter criteria.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = stocks.map(stock => {
+          const pos = Number(stock.changePercent) >= 0;
+          const isStarred = watchlist.has(stock.symbol);
+          const volFormatted = (Math.round((stock.price * 123) / 100) * 100).toLocaleString('en-IN');
+
+          return `
+            <tr data-symbol="${stock.symbol}">
+              <td class="text-center">
+                <span class="watchlist-star ${isStarred ? 'active' : ''}" data-star-symbol="${stock.symbol}" title="Add to watchlist">
+                  ${isStarred ? '★' : '☆'}
+                </span>
+              </td>
+              <td class="text-left">
+                <a href="stock.html?symbol=${encodeURIComponent(stock.symbol)}" style="font-weight: var(--font-weight-bold); color: var(--color-ink);">
+                  ${stock.symbol}
+                </a>
+              </td>
+              <td class="text-left" style="color: var(--color-slate); font-size: var(--font-size-xs);">
+                ${stock.companyName}
+              </td>
+              <td class="text-right num" style="font-weight: var(--font-weight-semibold);">
+                ${formatCurrency(stock.price)}
+              </td>
+              <td class="text-right num" style="font-weight: var(--font-weight-semibold); color: ${pos ? 'var(--color-gain)' : 'var(--color-loss)'};">
+                ${pos ? '+' : ''}${Number(stock.changePercent).toFixed(2)}%
+              </td>
+              <td class="text-center">
+                ${createSparkline(stock.sparkline || [], pos)}
+              </td>
+              <td class="text-right num col-hide-sm" style="color: var(--color-slate); font-size: var(--font-size-xs);">
+                ${volFormatted}
+              </td>
+              <td class="text-right col-hide-sm" style="color: var(--color-slate); font-size: var(--font-size-xs);">
+                ${stock.sector || 'General'}
+              </td>
+              <td class="text-center">
+                <div class="row-actions">
+                  <button type="button" class="btn-buy" data-symbol="${stock.symbol}" data-id="${stock.id}" data-stock-id="${stock.id}">Buy</button>
+                  <button type="button" class="btn-sell" data-symbol="${stock.symbol}" data-id="${stock.id}" data-stock-id="${stock.id}">Sell</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        // Attach Star toggle listener
+        tbody.querySelectorAll('[data-star-symbol]').forEach(star => {
+          star.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const sym = star.dataset.starSymbol;
+            if (!sym || sym === 'undefined' || sym === 'null') return;
+            if (watchlist.has(sym)) {
+              watchlist.delete(sym);
+            } else {
+              watchlist.add(sym);
+            }
+            localStorage.setItem('equitrade_watchlist', JSON.stringify(Array.from(watchlist)));
+            renderTableView(getFilteredStocks());
+          });
+        });
+      }
+
+      // ----------------------------------------------------------------------
+      // View 2: Cards View
+      // ----------------------------------------------------------------------
+      function renderCardsView(stocks) {
+        const container = document.getElementById('cardsView');
+        if (!stocks.length) {
+          container.innerHTML = '<div class="empty-state">No matching securities found.</div>';
+          return;
+        }
+
+        container.innerHTML = stocks.map(stock => {
+          const pos = Number(stock.changePercent) >= 0;
+          return `
+            <div class="market-stock-card" data-symbol="${stock.symbol}">
+              <div>
+                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                  <div>
+                    <a href="stock.html?symbol=${encodeURIComponent(stock.symbol)}" style="font-weight: var(--font-weight-bold); font-size: var(--font-size-md); color: var(--color-ink);">
+                      ${stock.symbol}
+                    </a>
+                    <div style="font-size: var(--font-size-xs); color: var(--color-slate);">${stock.companyName}</div>
+                  </div>
+                  <span class="stock-chip ${pos ? 'positive' : 'negative'}">
+                    ${pos ? '+' : ''}${Number(stock.changePercent).toFixed(2)}%
+                  </span>
+                </div>
+                <div class="num" style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); margin: var(--space-3) 0 var(--space-2);">
+                  ${formatCurrency(stock.price)}
+                </div>
+                ${createSparkline(stock.sparkline || [], pos)}
+              </div>
+              <div style="display:flex; gap: var(--space-2); margin-top: var(--space-3);">
+                <button type="button" class="btn-buy" style="flex:1; padding: 6px 0;" data-symbol="${stock.symbol}" data-id="${stock.id}" data-stock-id="${stock.id}">Buy</button>
+                <button type="button" class="btn-sell" style="flex:1; padding: 6px 0;" data-symbol="${stock.symbol}" data-id="${stock.id}" data-stock-id="${stock.id}">Sell</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // ----------------------------------------------------------------------
+      // View 3: Heatmap View (Grouped by Sector)
+      // ----------------------------------------------------------------------
+      function renderHeatmapView(stocks) {
+        const container = document.getElementById('heatmapContainer');
+        if (!stocks.length) {
+          container.innerHTML = '<div class="empty-state">No securities available.</div>';
+          return;
+        }
+
+        // Group stocks by sector
+        const sectors = {};
+        stocks.forEach(s => {
+          const sec = s.sector || 'General';
+          if (!sectors[sec]) sectors[sec] = [];
+          sectors[sec].push(s);
+        });
+
+        container.innerHTML = Object.entries(sectors).map(([sectorName, secStocks]) => `
+          <div class="sector-group">
+            <div class="sector-group-title">
+              <span>${sectorName}</span>
+              <span style="font-size: var(--font-size-xs); color: var(--color-slate);">(${secStocks.length} stocks)</span>
+            </div>
+            <div class="heatmap-board">
+              ${secStocks.map(stock => {
+                const pos = Number(stock.changePercent) >= 0;
+                const mag = Math.min(Math.abs(stock.changePercent), 4);
+                // Disciplined green/red palette variations
+                const bg = pos ? `rgba(14, 159, 110, ${0.45 + (mag / 4) * 0.55})` : `rgba(214, 57, 58, ${0.45 + (mag / 4) * 0.55})`;
+
+                return `
+                  <div class="heatmap-tile" style="background-color: ${bg};" onclick="window.location.href='stock.html?symbol=${encodeURIComponent(stock.symbol)}'">
+                    <div>
+                      <div class="tile-symbol">${stock.symbol}</div>
+                      <div class="tile-price">${formatCurrency(stock.price)}</div>
+                    </div>
+                    <div class="tile-change">${pos ? '+' : ''}${Number(stock.changePercent).toFixed(2)}%</div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `).join('');
+      }
+
+      // ----------------------------------------------------------------------
+      // Toolbar & Toggle Event Handlers
+      // ----------------------------------------------------------------------
+      function setupToolbarEvents() {
+        // Search & Filters
+        document.getElementById('marketSearch').addEventListener('input', () => renderCurrentView(false));
+        document.getElementById('sectorFilter').addEventListener('change', () => renderCurrentView(true));
+        document.getElementById('movementFilter').addEventListener('change', () => renderCurrentView(true));
+        document.getElementById('sortBy').addEventListener('change', () => renderCurrentView(true));
+
+        document.getElementById('resetFiltersBtn').addEventListener('click', () => {
+          document.getElementById('marketSearch').value = '';
+          document.getElementById('sectorFilter').value = '';
+          document.getElementById('movementFilter').value = 'all';
+          document.getElementById('sortBy').value = 'change_desc';
+          renderCurrentView(true);
+        });
+
+        // View toggle (Table / Cards / Heatmap)
+        document.querySelectorAll('#viewToggle .view-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('#viewToggle .view-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentView = btn.dataset.view;
+
+            document.getElementById('tableView').classList.toggle('hidden', currentView !== 'table');
+            document.getElementById('cardsView').classList.toggle('hidden', currentView !== 'cards');
+            document.getElementById('heatmapView').classList.toggle('hidden', currentView !== 'heatmap');
+
+            // Density toggle only relevant for table view
+            document.getElementById('densityToggle').style.display = currentView === 'table' ? 'inline-flex' : 'none';
+
+            renderCurrentView(true);
+          });
+        });
+
+        // Density toggle (Regular / Compact)
+        document.querySelectorAll('#densityToggle .density-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('#densityToggle .density-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentDensity = btn.dataset.density;
+            renderTableView(getFilteredStocks());
+          });
+        });
+      }
+    </script>
+  </body>
+</html>

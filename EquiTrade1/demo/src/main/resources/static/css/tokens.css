@@ -1,0 +1,135 @@
+/* ==========================================================================
+   EquiTrade Design System Tokens
+   A calm trading terminal where color means money.
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap');
+
+:root {
+  /* Core Brand & Financial Semantics */
+  --color-gain: #0E9F6E;
+  --color-gain-subtle: #E3F8EE;
+  --color-gain-border: #99E5C2;
+
+  --color-loss: #D6393A;
+  --color-loss-subtle: #FCE8E8;
+  --color-loss-border: #F7B5B6;
+
+  --color-action: #2150D6;
+  --color-action-hover: #1940B0;
+  --color-action-subtle: #EBF0FF;
+  --color-action-border: #B8CDFB;
+
+  /* Neutral Light Theme (Default) */
+  --color-ink: #14191C;
+  --color-slate: #5C676E;
+  --color-mist: #E4E8EA;
+  --color-mist-light: #F0F3F5;
+  --color-surface: #FFFFFF;
+  --color-panel: #F7F9FA;
+  --color-panel-elevated: #FFFFFF;
+  --color-border: #DDE2E5;
+  --color-border-subtle: #E9ECEF;
+  --color-tape-bg: #FFFFFF;
+  --color-header-bg: #FFFFFF;
+
+  /* Focus & Accents */
+  --color-focus: rgba(33, 80, 214, 0.35);
+  --color-row-hover: #F4F7F9;
+  --color-row-flash-gain: rgba(14, 159, 110, 0.18);
+  --color-row-flash-loss: rgba(214, 57, 58, 0.18);
+
+  /* Typography Scale */
+  --font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-size-xs: 0.725rem;   /* 11.6px */
+  --font-size-sm: 0.8125rem;  /* 13px */
+  --font-size-base: 0.9375rem;/* 15px */
+  --font-size-md: 1.0625rem;  /* 17px */
+  --font-size-lg: 1.25rem;    /* 20px */
+  --font-size-xl: 1.5rem;     /* 24px */
+  --font-size-2xl: 1.875rem;  /* 30px */
+  --font-size-3xl: 2.25rem;   /* 36px */
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.45;
+  --line-height-loose: 1.6;
+
+  /* Spacing Scale (4px / 8px baseline) */
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Border Radii Hierarchy */
+  --radius-xs: 2px;
+  --radius-sm: 4px;   /* Table rows, inputs, chips, buttons */
+  --radius-md: 6px;   /* Cards, panels, toolbars */
+  --radius-lg: 8px;   /* Modals, dropdowns, drawers */
+  --radius-xl: 12px;  /* Outer containers if needed */
+
+  /* Shadows (Disciplined: Only for floating layers) */
+  --shadow-none: none;
+  --shadow-dropdown: 0 4px 14px rgba(20, 25, 28, 0.08), 0 1px 3px rgba(20, 25, 28, 0.04);
+  --shadow-modal: 0 16px 36px rgba(20, 25, 28, 0.16), 0 4px 12px rgba(20, 25, 28, 0.08);
+  --shadow-drawer: -4px 0 28px rgba(20, 25, 28, 0.14), -1px 0 4px rgba(20, 25, 28, 0.04);
+  --shadow-toast: 0 6px 18px rgba(20, 25, 28, 0.12);
+
+  /* Transitions */
+  --transition-fast: 120ms ease;
+  --transition-normal: 200ms ease;
+  --transition-drawer: 280ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ==========================================================================
+   Dark Theme (Saved in localStorage, neutral blue-grey, never pure black)
+   ========================================================================== */
+body.dark,
+[data-theme="dark"] {
+  --color-gain: #10B981;
+  --color-gain-subtle: rgba(16, 185, 129, 0.14);
+  --color-gain-border: rgba(16, 185, 129, 0.35);
+
+  --color-loss: #EF4444;
+  --color-loss-subtle: rgba(239, 68, 68, 0.14);
+  --color-loss-border: rgba(239, 68, 68, 0.35);
+
+  --color-action: #3B82F6;
+  --color-action-hover: #2563EB;
+  --color-action-subtle: rgba(59, 130, 246, 0.14);
+  --color-action-border: rgba(59, 130, 246, 0.35);
+
+  --color-ink: #F2F5F7;
+  --color-slate: #94A3B0;
+  --color-mist: #28343E;
+  --color-mist-light: #202A32;
+  --color-surface: #172027;
+  --color-panel: #11171D;
+  --color-panel-elevated: #1D2831;
+  --color-border: #28343E;
+  --color-border-subtle: #1F2932;
+  --color-tape-bg: #141C22;
+  --color-header-bg: #141C22;
+
+  --color-focus: rgba(59, 130, 246, 0.45);
+  --color-row-hover: #1A242C;
+  --color-row-flash-gain: rgba(16, 185, 129, 0.22);
+  --color-row-flash-loss: rgba(239, 68, 68, 0.22);
+
+  --shadow-dropdown: 0 6px 18px rgba(0, 0, 0, 0.35);
+  --shadow-modal: 0 20px 48px rgba(0, 0, 0, 0.55);
+  --shadow-drawer: -6px 0 32px rgba(0, 0, 0, 0.5);
+  --shadow-toast: 0 8px 24px rgba(0, 0, 0, 0.4);
+}

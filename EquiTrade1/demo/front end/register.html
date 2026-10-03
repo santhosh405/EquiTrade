@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create Account | EquiTrade Virtual Simulator</title>
+    <meta name="description" content="Register an EquiTrade practice trading account with ₹5,00,000 in virtual capital." />
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+    <link rel="stylesheet" href="css/tokens.css" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <script src="js/api.js" defer></script>
+    <script src="js/auth.js" defer></script>
+    <script src="js/ui.js" defer></script>
+    <script src="js/components.js" defer></script>
+  </head>
+  <body data-page="register">
+    <main class="page-shell">
+      <div class="container" style="max-width: 960px;">
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--space-6); align-items: start; margin-top: var(--space-4);">
+          
+          <!-- Column 1: Registration Form -->
+          <div class="panel" style="padding: var(--space-6);">
+            <div style="margin-bottom: var(--space-5);">
+              <div style="display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2);">
+                <span class="brand-icon">EQ</span>
+                <span style="font-weight: var(--font-weight-bold); font-size: var(--font-size-md);">EquiTrade</span>
+              </div>
+              <h1 style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); letter-spacing: -0.02em;">Open Practice Account</h1>
+              <p style="font-size: var(--font-size-xs); color: var(--color-slate); margin-top: 2px;">
+                Instant practice account with ₹5,00,000 virtual trading cash.
+              </p>
+            </div>
+
+            <!-- In-line validation alert -->
+            <div id="registerAlert" style="display: none; padding: 10px 12px; border-radius: var(--radius-sm); font-size: var(--font-size-xs); margin-bottom: 16px;"></div>
+
+            <form id="registerForm">
+              <div class="form-group">
+                <label for="regUsername">Full Name / Trader Handle</label>
+                <input type="text" id="regUsername" class="text-input" placeholder="Rohan Sharma" required autocomplete="name" />
+              </div>
+
+              <div class="form-group">
+                <label for="regEmail">Email Address</label>
+                <input type="email" id="regEmail" class="text-input" placeholder="rohan@example.com" required autocomplete="email" />
+              </div>
+
+              <div class="form-group">
+                <label for="regPassword">Password (Minimum 6 characters)</label>
+                <input type="password" id="regPassword" class="text-input" placeholder="••••••••" required minlength="6" autocomplete="new-password" />
+              </div>
+
+              <button type="submit" class="btn btn-primary" id="regSubmitBtn" style="width: 100%; height: 38px; margin-top: var(--space-2);">
+                Create Simulator Account
+              </button>
+
+              <div style="margin-top: var(--space-4); font-size: var(--font-size-xs); color: var(--color-slate); text-align: center;">
+                Already have an account? <a href="login.html" style="color: var(--color-action); font-weight: var(--font-weight-semibold);">Sign In</a>
+              </div>
+            </form>
+          </div>
+
+          <!-- Column 2: Live Market Snapshot & Capital Disclosure -->
+          <div class="panel" style="padding: var(--space-6);">
+            <div class="panel-header" style="margin-bottom: var(--space-3);">
+              <div>
+                <h3 class="panel-title">Starting Practice Capital</h3>
+                <div class="panel-subtitle">Zero deposit practice trading account.</div>
+              </div>
+              <span class="stock-chip positive">₹5,00,000 INR</span>
+            </div>
+
+            <div style="margin-bottom: var(--space-5); font-size: var(--font-size-sm); color: var(--color-slate); line-height: var(--line-height-loose);">
+              Every new EquiTrade trader receives ₹5,00,000 in virtual Indian Rupees to test portfolio allocations and intraday price dynamics.
+            </div>
+
+            <div class="panel-header" style="margin-bottom: var(--space-3); border-top: 1px solid var(--color-border-subtle); padding-top: var(--space-4);">
+              <h3 class="panel-title" style="font-size: var(--font-size-sm);">Active Market Movers</h3>
+              <span class="stock-chip positive" style="font-size: 0.7rem;">● Live Simulation</span>
+            </div>
+
+            <div id="regMarketList" style="display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-4);">
+              <div class="skeleton" style="height: 44px;"></div>
+              <div class="skeleton" style="height: 44px;"></div>
+              <div class="skeleton" style="height: 44px;"></div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </main>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', async () => {
+        const form = document.getElementById('registerForm');
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const username = document.getElementById('regUsername').value.trim();
+          const email = document.getElementById('regEmail').value.trim();
+          const password = document.getElementById('regPassword').value.trim();
+          const submitBtn = document.getElementById('regSubmitBtn');
+          const alertBox = document.getElementById('registerAlert');
+
+          alertBox.style.display = 'none';
+
+          if (password.length < 6) {
+            alertBox.style.display = 'block';
+            alertBox.style.backgroundColor = 'var(--color-loss-subtle)';
+            alertBox.style.color = 'var(--color-loss)';
+            alertBox.style.border = '1px solid var(--color-loss-border)';
+            alertBox.textContent = 'Password must be at least 6 characters.';
+            return;
+          }
+
+          try {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating account...';
+            await registerUser(username, email, password);
+            showToast('Account registered successfully! Signing in...', 'success');
+
+            // Auto-login
+            await loginUser(email, password);
+            setTimeout(() => {
+              window.location.href = 'index.html';
+            }, 400);
+
+          } catch (err) {
+            alertBox.style.display = 'block';
+            alertBox.style.backgroundColor = 'var(--color-loss-subtle)';
+            alertBox.style.color = 'var(--color-loss)';
+            alertBox.style.border = '1px solid var(--color-loss-border)';
+            alertBox.textContent = err.message || 'Unable to register account.';
+          } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Create Simulator Account';
+          }
+        });
+
+        // Load Market Snapshot
+        try {
+          const stocks = await apiGet('/api/stocks/live');
+          if (stocks && stocks.length) {
+            const listEl = document.getElementById('regMarketList');
+            listEl.innerHTML = stocks.slice(0, 4).map(s => {
+              const pos = Number(s.changePercent) >= 0;
+              return `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding: 6px 8px; border-radius: var(--radius-xs); border-bottom: 1px solid var(--color-border-subtle);">
+                  <div>
+                    <div style="font-weight: var(--font-weight-semibold); font-size: var(--font-size-xs);">${s.symbol}</div>
+                    <div style="font-size: 0.7rem; color: var(--color-slate);">${s.companyName.split(' ')[0]}</div>
+                  </div>
+                  <div style="text-align: right;">
+                    <div class="num" style="font-weight: var(--font-weight-semibold); font-size: var(--font-size-xs);">${formatCurrency(s.price)}</div>
+                    <div class="num" style="font-size: 0.7rem; font-weight: var(--font-weight-semibold); color: ${pos ? 'var(--color-gain)' : 'var(--color-loss)'};">
+                      ${pos ? '+' : ''}${Number(s.changePercent).toFixed(2)}%
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('');
+          }
+        } catch (e) {}
+      });
+    </script>
+  </body>
+</html>

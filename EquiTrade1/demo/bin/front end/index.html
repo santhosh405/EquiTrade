@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EquiTrade | Smarter Portfolio Decisions & Equity Trading</title>
+    <meta name="description" content="EquiTrade virtual stock equity trading platform with real-time analytics, simulated prices, and portfolio management." />
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <script src="js/api.js" defer></script>
+    <script src="js/auth.js" defer></script>
+    <script src="js/ui.js" defer></script>
+    <script src="js/components.js" defer></script>
+  </head>
+  <body data-page="home">
+    <section class="hero">
+      <div class="container hero-inner">
+        <div>
+          <span class="eyebrow">Real-Time Market Intelligence</span>
+          <h1>Trade smarter with live simulated equity signals.</h1>
+          <p class="lead">
+            EquiTrade empowers investors and day traders to analyze market breadth, test strategies with zero capital risk, and manage portfolio allocations with high precision.
+          </p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="market.html">Explore Market</a>
+            <a class="btn btn-secondary" href="trade.html">Open Trade Desk</a>
+            <a class="btn btn-ghost" href="portfolio.html">View Portfolio</a>
+          </div>
+        </div>
+        <div class="hero-visual glass">
+          <div class="floating-card card-one">
+            <div style="color: var(--muted); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase;">Portfolio Growth</div>
+            <div class="mini-kpi">
+              <strong style="font-size: 1.5rem; color: var(--text);">+₹1,28,450</strong>
+              <span class="stock-chip positive">+14.82%</span>
+            </div>
+          </div>
+          <div class="floating-card card-two">
+            <div style="color: var(--muted); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase;">Top Market Mover</div>
+            <div class="mini-kpi" style="margin-top: 14px;">
+              <div>
+                <div class="stock-symbol" style="font-size:1.15rem;">TATAMOTORS</div>
+                <div class="stock-name" style="font-size:0.8rem;">Tata Motors Ltd</div>
+              </div>
+              <span class="stock-chip positive">+3.40%</span>
+            </div>
+          </div>
+          <div class="floating-card card-three">
+            <div style="font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;">Risk & Allocation</div>
+            <div style="display:flex; align-items:center; gap:12px; margin-top:12px;">
+              <div class="stat-ring"><span>84%</span></div>
+              <div>
+                <div style="font-size: 1.05rem; font-weight: 700; color: var(--text);">Diversified</div>
+                <div style="color: var(--muted); font-size: 0.82rem;">Across 9 key sectors</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <main class="page-shell">
+      <div class="container">
+        <!-- Live Stat Counters -->
+        <section class="section">
+          <div class="section-header">
+            <div>
+              <h2>Market Overview</h2>
+              <div class="section-subtitle">Real-time statistics across active securities, average valuation, and day movers.</div>
+            </div>
+            <a class="btn btn-secondary" href="market.html">Full Market Board →</a>
+          </div>
+          <div class="stat-grid" id="statGrid">
+            <div class="stat-card glass skeleton skeleton-card"></div>
+            <div class="stat-card glass skeleton skeleton-card"></div>
+            <div class="stat-card glass skeleton skeleton-card"></div>
+            <div class="stat-card glass skeleton skeleton-card"></div>
+          </div>
+        </section>
+
+        <!-- Top Gainers and Losers -->
+        <section class="section">
+          <div class="section-header">
+            <div>
+              <h2>Top Market Movers</h2>
+              <div class="section-subtitle">Fastest rising stocks and sharpest pullbacks in today's active session.</div>
+            </div>
+            <span class="stock-chip positive" style="font-size: 0.8rem;">● Live Simulated Session</span>
+          </div>
+          <div class="market-layout">
+            <div class="panel-card glass" id="gainersBox">
+              <div class="skeleton skeleton-card" style="height: 300px;"></div>
+            </div>
+            <div class="panel-card glass" id="losersBox">
+              <div class="skeleton skeleton-card" style="height: 300px;"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Feature Highlights -->
+        <section class="section">
+          <div class="section-header">
+            <div>
+              <h2>Why Trade With EquiTrade</h2>
+              <div class="section-subtitle">A state-of-the-art virtual trading desk engineered for speed, confidence and clarity.</div>
+            </div>
+          </div>
+          <div class="feature-grid">
+            <div class="feature-card glass">
+              <div class="icon-wrap">⚡</div>
+              <h3>Simulated Live Prices</h3>
+              <p>Dynamic background price ticks every few seconds with instant green and red price flashes mirroring real-world trading floors.</p>
+            </div>
+            <div class="feature-card glass">
+              <div class="icon-wrap">📊</div>
+              <h3>Interactive Charting</h3>
+              <p>Deep dive into intraday, weekly, monthly and annual trends with Chart.js-powered line and doughnut visualization engines.</p>
+            </div>
+            <div class="feature-card glass">
+              <div class="icon-wrap">💼</div>
+              <h3>Real-Time Portfolio P&L</h3>
+              <p>Instant portfolio tracking with weighted average buy prices, unrealized gains, day changes, and cash balance validation.</p>
+            </div>
+            <div class="feature-card glass">
+              <div class="icon-wrap">⭐</div>
+              <h3>Personalized Watchlists</h3>
+              <p>Save and track high-conviction ideas with one-click watchlist stars synchronized directly to your account database.</p>
+            </div>
+            <div class="feature-card glass">
+              <div class="icon-wrap">🛡️</div>
+              <h3>Secure JWT Authentication</h3>
+              <p>Stateful-free token-based security protecting your trade desk and role-restricted administrator controls.</p>
+            </div>
+            <div class="feature-card glass">
+              <div class="icon-wrap">📥</div>
+              <h3>Audit & CSV Export</h3>
+              <p>Complete trade history with type filtering, symbol searches, and one-click CSV export ready for review.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', async () => {
+        try {
+          const [stocks, gainers, losers] = await Promise.all([
+            apiGet('/api/stocks'),
+            apiGet('/api/stocks/gainers'),
+            apiGet('/api/stocks/losers')
+          ]);
+
+          const totalVolume = stocks.reduce((sum, s) => sum + s.price, 0);
+          const avgPrice = stocks.length ? totalVolume / stocks.length : 0;
+          const topGainer = gainers && gainers.length ? gainers[0] : null;
+          const topLoser = losers && losers.length ? losers[0] : null;
+
+          const statGrid = document.getElementById('statGrid');
+          statGrid.innerHTML = `
+            <div class="stat-card glass">
+              <div class="label">Tracked Securities</div>
+              <div class="value" id="statTracked">${stocks.length}</div>
+            </div>
+            <div class="stat-card glass">
+              <div class="label">Average Share Price</div>
+              <div class="value" id="statAvgPrice">${formatCurrency(avgPrice)}</div>
+            </div>
+            <div class="stat-card glass">
+              <div class="label">Top Gainer (${topGainer ? topGainer.symbol : 'N/A'})</div>
+              <div class="value trend-up" id="statGainer">${topGainer ? '+' + topGainer.changePercent.toFixed(2) + '%' : '+0.00%'}</div>
+            </div>
+            <div class="stat-card glass">
+              <div class="label">Largest Pullback (${topLoser ? topLoser.symbol : 'N/A'})</div>
+              <div class="value trend-down" id="statLoser">${topLoser ? topLoser.changePercent.toFixed(2) + '%' : '-0.00%'}</div>
+            </div>
+          `;
+
+          const renderMovers = (title, items, isGain) => {
+            const list = items || [];
+            return `
+              <div class="section-header" style="margin-bottom: 16px;">
+                <h3 style="margin: 0; display:flex; align-items:center; gap:8px;">
+                  <span>${isGain ? '🚀' : '🔻'}</span> ${title}
+                </h3>
+              </div>
+              <div class="mini-grid">
+                ${list.slice(0, 4).map(stock => {
+                  const positive = Number(stock.changePercent) >= 0;
+                  const sparkPoints = [
+                    stock.price * (positive ? 0.94 : 1.06),
+                    stock.price * (positive ? 0.96 : 1.04),
+                    stock.price * (positive ? 0.99 : 1.02),
+                    stock.price * (positive ? 1.01 : 0.98),
+                    stock.price
+                  ];
+                  return `
+                    <div class="stock-card" style="background: var(--card);">
+                      <div class="stock-head">
+                        <div>
+                          <div class="stock-symbol">${stock.symbol}</div>
+                          <div class="stock-name">${stock.companyName}</div>
+                        </div>
+                        <span class="stock-chip ${positive ? 'positive' : 'negative'}">
+                          ${positive ? '+' : ''}${stock.changePercent.toFixed(2)}%
+                        </span>
+                      </div>
+                      <div class="stock-price" style="margin: 10px 0;">${formatCurrency(stock.price)}</div>
+                      ${createSparkline(sparkPoints, positive)}
+                      <div class="stock-footer" style="margin-top: 14px;">
+                        <a class="link-btn" href="trade.html?symbol=${encodeURIComponent(stock.symbol)}&action=buy">Buy</a>
+                        <a class="link-btn" href="stock.html?symbol=${encodeURIComponent(stock.symbol)}">View Details</a>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            `;
+          };
+
+          document.getElementById('gainersBox').innerHTML = renderMovers('Top Gainers', gainers, true);
+          document.getElementById('losersBox').innerHTML = renderMovers('Top Losers', losers, false);
+
+        } catch (error) {
+          showToast(error.message || 'Unable to load market overview.', 'error');
+        }
+      });
+    </script>
+  </body>
+</html>

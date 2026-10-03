@@ -1,0 +1,1365 @@
+/* ==========================================================================
+   EquiTrade Stylesheet
+   Architecture: Calm Trading Terminal where Color Means Money.
+   Compliant with Banned Defaults list (Zero glassmorphism, zero purple washes,
+   strictly tabular numbers, 1px disciplined borders, minimal floating shadows).
+   ========================================================================== */
+
+@import url('tokens.css');
+
+/* --------------------------------------------------------------------------
+   1. Reset & Global Foundation
+   -------------------------------------------------------------------------- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+  color: var(--color-ink);
+  background-color: var(--color-panel);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tabular figures for all financial & numerical data */
+.num,
+.tabular,
+table td,
+.metric-value,
+.kpi-value,
+.stat-val,
+.tape-price,
+.tape-change,
+.stock-price,
+.stock-chip,
+.badge-price,
+.tv-hud-item strong {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img, svg {
+  display: block;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  line-height: inherit;
+}
+
+button {
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--color-action);
+  outline-offset: 2px;
+}
+
+/* Accessibility: respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   2. Layout Utilities & Containers
+   -------------------------------------------------------------------------- */
+.container {
+  width: 100%;
+  max-width: 1360px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+}
+
+.page-shell {
+  flex: 1;
+  padding: var(--space-6) 0 var(--space-12);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   3. Header & Global Navigation (Slim, Single-Line, Unwrapping)
+   -------------------------------------------------------------------------- */
+.topbar {
+  background-color: var(--color-header-bg);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: 54px;
+}
+
+.nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+  gap: var(--space-4);
+}
+
+/* Brand Mark: Sharp geometric terminal emblem */
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-md);
+  color: var(--color-ink);
+  letter-spacing: -0.01em;
+  flex-shrink: 0;
+}
+
+.brand-icon {
+  width: 26px;
+  height: 26px;
+  background-color: var(--color-ink);
+  color: var(--color-surface);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-xs);
+  letter-spacing: -0.05em;
+}
+
+body.dark .brand-icon {
+  background-color: var(--color-action);
+  color: #FFFFFF;
+}
+
+/* Nav Links: strictly horizontal, unwrapping */
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.nav-link {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-slate);
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast), background-color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.nav-link:hover {
+  color: var(--color-ink);
+  background-color: var(--color-mist-light);
+}
+
+.nav-link.active {
+  color: var(--color-action);
+  font-weight: var(--font-weight-semibold);
+  background-color: var(--color-action-subtle);
+}
+
+/* Search Box with / shortcut */
+.header-search {
+  position: relative;
+  flex: 1;
+  max-width: 320px;
+}
+
+.search-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-input-wrap input {
+  width: 100%;
+  height: 32px;
+  padding: 0 38px 0 36px;
+  background-color: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-ink);
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.search-input-wrap input:focus {
+  background-color: var(--color-surface);
+  border-color: var(--color-action);
+  outline: none;
+}
+
+.search-icon-svg {
+  position: absolute;
+  left: 10px;
+  width: 15px;
+  height: 15px;
+  color: var(--color-slate);
+  pointer-events: none;
+}
+
+.search-kbd {
+  position: absolute;
+  right: 8px;
+  height: 18px;
+  min-width: 18px;
+  padding: 0 4px;
+  font-size: var(--font-size-xs);
+  font-family: inherit;
+  color: var(--color-slate);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.search-suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-dropdown);
+  max-height: 380px;
+  overflow-y: auto;
+  z-index: 120;
+  display: none;
+}
+
+.search-suggestions.visible {
+  display: block;
+}
+
+.search-suggestion-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border-subtle);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.search-suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.search-suggestion-item:hover {
+  background-color: var(--color-mist-light);
+}
+
+/* Nav Actions (Balance, Theme, User) */
+.auth-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.wallet-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  background-color: var(--color-mist-light);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+}
+
+.wallet-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-slate);
+  font-weight: var(--font-weight-medium);
+}
+
+.wallet-val {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-ink);
+}
+
+.theme-toggle-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-slate);
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.theme-toggle-btn:hover {
+  color: var(--color-ink);
+  border-color: var(--color-slate);
+}
+
+/* --------------------------------------------------------------------------
+   4. Live Index Tape & Market Hours Banner
+   -------------------------------------------------------------------------- */
+.tape-bar {
+  background-color: var(--color-tape-bg);
+  border-bottom: 1px solid var(--color-border);
+  height: 38px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+  z-index: 90;
+}
+
+.tape-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: var(--space-4);
+}
+
+.market-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-slate);
+  flex-shrink: 0;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--color-slate);
+}
+
+.status-dot.open {
+  background-color: var(--color-gain);
+}
+
+.tape-items-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.tape-items-wrap::-webkit-scrollbar {
+  display: none;
+}
+
+.tape-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--radius-xs);
+  transition: background-color var(--transition-fast);
+}
+
+.tape-item:hover {
+  background-color: var(--color-mist-light);
+}
+
+.tape-symbol {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-ink);
+}
+
+.tape-price {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-ink);
+}
+
+.tape-change {
+  font-weight: var(--font-weight-semibold);
+}
+
+.tape-change.pos {
+  color: var(--color-gain);
+}
+
+.tape-change.neg {
+  color: var(--color-loss);
+}
+
+/* --------------------------------------------------------------------------
+   5. Buttons & Interactive Controls
+   -------------------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.btn-primary {
+  background-color: var(--color-action);
+  color: #FFFFFF;
+}
+
+.btn-primary:hover {
+  background-color: var(--color-action-hover);
+}
+
+.btn-secondary {
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  border-color: var(--color-border);
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-mist-light);
+  border-color: var(--color-slate);
+}
+
+.btn-ghost {
+  background-color: transparent;
+  color: var(--color-slate);
+}
+
+.btn-ghost:hover {
+  color: var(--color-ink);
+  background-color: var(--color-mist-light);
+}
+
+.btn-buy {
+  background-color: var(--color-gain);
+  color: #FFFFFF;
+  padding: 4px 10px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-sm);
+}
+
+.btn-buy:hover {
+  background-color: #0B865D;
+}
+
+.btn-sell {
+  background-color: var(--color-loss);
+  color: #FFFFFF;
+  padding: 4px 10px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-sm);
+}
+
+.btn-sell:hover {
+  background-color: #B52829;
+}
+
+.btn-danger {
+  background-color: var(--color-loss);
+  color: #FFFFFF;
+}
+
+.btn-danger:hover {
+  background-color: #B52829;
+}
+
+.btn-sm {
+  padding: 4px 8px;
+  font-size: var(--font-size-xs);
+}
+
+/* Text Inputs, Selects */
+.text-input,
+.select-input {
+  width: 100%;
+  height: 36px;
+  padding: 0 var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--color-ink);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--transition-fast);
+}
+
+.text-input:focus,
+.select-input:focus {
+  border-color: var(--color-action);
+  outline: none;
+}
+
+.form-group {
+  margin-bottom: var(--space-4);
+}
+
+.form-group label {
+  display: block;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-slate);
+  margin-bottom: var(--space-1);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+/* --------------------------------------------------------------------------
+   6. Summary Numbers Strip & Metric Cards
+   -------------------------------------------------------------------------- */
+.summary-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background-color: var(--color-border);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: var(--space-6);
+}
+
+.summary-tile {
+  background-color: var(--color-surface);
+  padding: var(--space-4) var(--space-5);
+}
+
+.summary-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-slate);
+  margin-bottom: var(--space-1);
+}
+
+.summary-value-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.summary-value {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-ink);
+}
+
+.summary-subtext {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.pos {
+  color: var(--color-gain);
+}
+
+.neg {
+  color: var(--color-loss);
+}
+
+/* Chips / Badges */
+.stock-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-xs);
+}
+
+.stock-chip.positive {
+  color: var(--color-gain);
+  background-color: var(--color-gain-subtle);
+  border: 1px solid var(--color-gain-border);
+}
+
+.stock-chip.negative {
+  color: var(--color-loss);
+  background-color: var(--color-loss-subtle);
+  border: 1px solid var(--color-loss-border);
+}
+
+/* --------------------------------------------------------------------------
+   7. Tables (Sticky Header, Tabular Right-Aligned Numerals, Dense Mode)
+   -------------------------------------------------------------------------- */
+.table-panel {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  position: relative;
+}
+
+.trading-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+  text-align: left;
+}
+
+.trading-table th {
+  position: sticky;
+  top: 0;
+  background-color: var(--color-panel);
+  color: var(--color-slate);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+  z-index: 10;
+  user-select: none;
+}
+
+.trading-table th.sortable {
+  cursor: pointer;
+}
+
+.trading-table th.sortable:hover {
+  color: var(--color-ink);
+}
+
+.trading-table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-ink);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.trading-table tbody tr {
+  transition: background-color var(--transition-fast);
+}
+
+.trading-table tbody tr:hover {
+  background-color: var(--color-row-hover);
+}
+
+/* Dense table mode */
+.trading-table.dense td,
+.trading-table.dense th {
+  padding: 6px var(--space-3);
+  font-size: var(--font-size-xs);
+}
+
+/* Alignment rules: Left for text, Right for numbers */
+.trading-table .text-left { text-align: left; }
+.trading-table .text-right { text-align: right; }
+.trading-table .text-center { text-align: center; }
+
+.trading-table .col-pnl {
+  min-width: 145px;
+  white-space: nowrap;
+}
+
+/* Row Actions Reveal on Hover */
+.row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  opacity: 0.15;
+  transition: opacity var(--transition-fast);
+}
+
+tr:hover .row-actions {
+  opacity: 1;
+}
+
+/* Tick Flash Transitions */
+@keyframes flashGreen {
+  0% { background-color: var(--color-row-flash-gain); }
+  100% { background-color: transparent; }
+}
+
+@keyframes flashRed {
+  0% { background-color: var(--color-row-flash-loss); }
+  100% { background-color: transparent; }
+}
+
+.flash-up {
+  animation: flashGreen 600ms ease-out forwards;
+}
+
+.flash-down {
+  animation: flashRed 600ms ease-out forwards;
+}
+
+/* --------------------------------------------------------------------------
+   8. Panels & Split-Pane Layouts
+   -------------------------------------------------------------------------- */
+.panel {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  margin-bottom: var(--space-6);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.panel-title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-ink);
+  letter-spacing: -0.01em;
+}
+
+.panel-subtitle {
+  font-size: var(--font-size-xs);
+  color: var(--color-slate);
+  margin-top: 2px;
+}
+
+/* Two-pane layout for Stock detail & Order execution */
+.two-pane-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+/* --------------------------------------------------------------------------
+   9. Slide-Over Global Order Drawer (#globalOrderDrawer)
+   -------------------------------------------------------------------------- */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(20, 25, 28, 0.4);
+  z-index: 200;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-normal), visibility var(--transition-normal);
+}
+
+.drawer-backdrop.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.order-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 420px;
+  max-width: 100vw;
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-drawer);
+  z-index: 210;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform var(--transition-drawer);
+}
+
+.drawer-backdrop.open .order-drawer {
+  transform: translateX(0);
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.drawer-stock-info {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.drawer-symbol {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-ink);
+}
+
+.drawer-price {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-ink);
+}
+
+.drawer-close {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-slate);
+  font-size: 1.1rem;
+}
+
+.drawer-close:hover {
+  background-color: var(--color-mist-light);
+  color: var(--color-ink);
+}
+
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-5);
+}
+
+/* Buy/Sell Segmented Switch */
+.order-action-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background-color: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  margin-bottom: var(--space-5);
+}
+
+.switch-btn {
+  padding: var(--space-2) 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-xs);
+  color: var(--color-slate);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.switch-btn.active-buy {
+  background-color: var(--color-gain);
+  color: #FFFFFF;
+}
+
+.switch-btn.active-sell {
+  background-color: var(--color-loss);
+  color: #FFFFFF;
+}
+
+/* Quick Qty Pills */
+.qty-pills {
+  display: flex;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.qty-pill {
+  flex: 1;
+  padding: 4px 0;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  background-color: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  color: var(--color-slate);
+}
+
+.qty-pill:hover {
+  background-color: var(--color-mist-light);
+  color: var(--color-ink);
+}
+
+/* Order Breakdown Box */
+.order-summary-box {
+  background-color: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  margin: var(--space-5) 0;
+}
+
+.summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--font-size-xs);
+  color: var(--color-slate);
+  margin-bottom: var(--space-2);
+}
+
+.summary-row:last-child {
+  margin-bottom: 0;
+  padding-top: var(--space-2);
+  border-top: 1px dashed var(--color-border);
+  color: var(--color-ink);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.drawer-footer {
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+}
+
+.btn-order-submit {
+  width: 100%;
+  height: 42px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-sm);
+}
+
+/* --------------------------------------------------------------------------
+   10. Modals & Dialogs
+   -------------------------------------------------------------------------- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(20, 25, 28, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 250;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-normal), visibility var(--transition-normal);
+  padding: var(--space-4);
+}
+
+.modal-backdrop.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal {
+  width: 100%;
+  max-width: 500px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-modal);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.modal-body {
+  padding: var(--space-5);
+}
+
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-panel);
+  border-bottom-left-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-lg);
+}
+
+/* --------------------------------------------------------------------------
+   11. TradingView & Lightweight Charts HUD
+   -------------------------------------------------------------------------- */
+.chart-box {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  position: relative;
+}
+
+.chart-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.chart-ctrl-group {
+  display: inline-flex;
+  background-color: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  gap: 2px;
+}
+
+.chart-ctrl-btn {
+  padding: 3px 8px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-xs);
+  color: var(--color-slate);
+}
+
+.chart-ctrl-btn:hover {
+  color: var(--color-ink);
+}
+
+.chart-ctrl-btn.active {
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  font-weight: var(--font-weight-semibold);
+  box-shadow: 0 1px 2px rgba(20, 25, 28, 0.06);
+}
+
+.chart-overlay-chip {
+  padding: 3px 8px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-xs);
+  color: var(--color-slate);
+  border: 1px solid transparent;
+}
+
+.chart-overlay-chip.ma20[aria-pressed="true"] {
+  color: #F59E0B;
+  background-color: rgba(245, 158, 11, 0.12);
+  border-color: #F59E0B;
+}
+
+.chart-overlay-chip.ma50[aria-pressed="true"] {
+  color: #3B82F6;
+  background-color: rgba(59, 130, 246, 0.12);
+  border-color: #3B82F6;
+}
+
+.tv-chart-container {
+  width: 100%;
+  height: 480px;
+  position: relative;
+}
+
+.tv-crosshair-hud {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background-color: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: var(--font-size-xs);
+  z-index: 15;
+  pointer-events: none;
+}
+
+body.dark .tv-crosshair-hud {
+  background-color: rgba(23, 32, 39, 0.92);
+}
+
+.tv-hud-item span {
+  color: var(--color-slate);
+  margin-right: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   12. Sparklines & Heatmap
+   -------------------------------------------------------------------------- */
+.sparkline-svg {
+  width: 110px;
+  height: 32px;
+  display: block;
+}
+
+.heatmap-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.heatmap-tile {
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  color: #FFFFFF;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 84px;
+  transition: opacity var(--transition-fast);
+}
+
+.heatmap-tile:hover {
+  opacity: 0.9;
+}
+
+.heatmap-tile .tile-symbol {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-sm);
+}
+
+.heatmap-tile .tile-price {
+  font-size: var(--font-size-xs);
+  opacity: 0.9;
+}
+
+.heatmap-tile .tile-change {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-sm);
+}
+
+/* --------------------------------------------------------------------------
+   13. Toasts & Empty States
+   -------------------------------------------------------------------------- */
+.toast-stack {
+  position: fixed;
+  bottom: var(--space-5);
+  right: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  z-index: 300;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-toast);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 260px;
+  max-width: 380px;
+  transition: opacity var(--transition-normal), transform var(--transition-normal);
+}
+
+.toast.success { border-left: 3px solid var(--color-gain); }
+.toast.error { border-left: 3px solid var(--color-loss); }
+.toast.info { border-left: 3px solid var(--color-action); }
+
+.empty-state {
+  text-align: center;
+  padding: var(--space-10) var(--space-4);
+  color: var(--color-slate);
+}
+
+.empty-state-title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-ink);
+  margin-bottom: var(--space-1);
+}
+
+.empty-state-text {
+  font-size: var(--font-size-sm);
+  max-width: 420px;
+  margin: 0 auto var(--space-4);
+  line-height: var(--line-height-normal);
+}
+
+/* Skeletons */
+.skeleton {
+  background-color: var(--color-mist);
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-xs);
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transform: translateX(-100%);
+  animation: shimmer 1.5s infinite;
+}
+
+body.dark .skeleton::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+}
+
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+/* --------------------------------------------------------------------------
+   14. Mobile Bottom Bar
+   -------------------------------------------------------------------------- */
+.mobile-nav-bar {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  background-color: var(--color-header-bg);
+  border-top: 1px solid var(--color-border);
+  z-index: 95;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 var(--space-2);
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.68rem;
+  color: var(--color-slate);
+  font-weight: var(--font-weight-medium);
+}
+
+.mobile-nav-item.active {
+  color: var(--color-action);
+}
+
+.mobile-nav-item svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* --------------------------------------------------------------------------
+   15. Footer (Disciplined Institutional Line)
+   -------------------------------------------------------------------------- */
+.footer-shell {
+  background-color: var(--color-header-bg);
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-5) 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-slate);
+}
+
+.footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.footer-links {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.footer-links a:hover {
+  color: var(--color-ink);
+}
+
+/* --------------------------------------------------------------------------
+   16. Responsive Breakpoints
+   -------------------------------------------------------------------------- */
+@media (max-width: 1024px) {
+  .two-pane-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .nav-links,
+  .wallet-badge,
+  .topbar .header-search {
+    display: none;
+  }
+
+  .mobile-nav-bar {
+    display: flex;
+  }
+
+  .page-shell {
+    padding-bottom: calc(56px + var(--space-6));
+  }
+
+  .summary-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .order-drawer {
+    width: 100vw;
+  }
+
+  .col-hide-sm {
+    display: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .col-hide-xs {
+    display: none !important;
+  }
+}

@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Market Board | EquiTrade</title>
+    <meta name="description" content="Explore real-time stocks, filter by gainers and losers, track your watchlist, and execute instant trades." />
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <script src="js/api.js" defer></script>
+    <script src="js/auth.js" defer></script>
+    <script src="js/ui.js" defer></script>
+    <script src="js/components.js" defer></script>
+  </head>
+  <body data-page="market">
+    <main class="page-shell">
+      <div class="container">
+        <!-- Section Header -->
+        <section class="section" style="padding-bottom: 8px;">
+          <div class="section-header">
+            <div>
+              <h2>Market Board</h2>
+              <div class="section-subtitle">Real-time simulated stocks with sector filters, watchlist tracking and instant trade execution.</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span class="stock-chip positive" id="liveTickerBadge" style="font-size: 0.82rem;">
+                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#22c55e; margin-right:4px;"></span>
+                Live Simulation Active
+              </span>
+            </div>
+          </div>
+
+          <!-- Filter Toolbar -->
+          <div class="panel-card glass" style="padding: 20px; margin-bottom: 24px;">
+            <div class="toolbar" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+              <div style="flex: 2; min-width: 220px;">
+                <input id="searchInput" class="text-input" type="text" placeholder="Search by symbol or company name (e.g. TCS, HDFC)..." />
+              </div>
+              <div style="flex: 1; min-width: 140px;">
+                <select id="sectorFilter" class="select-input">
+                  <option value="">All Sectors</option>
+                </select>
+              </div>
+              <div style="flex: 1; min-width: 140px;">
+                <select id="movementFilter" class="select-input">
+                  <option value="all">All Movements</option>
+                  <option value="gainers">Gainers Only (▲)</option>
+                  <option value="losers">Losers Only (▼)</option>
+                  <option value="watchlist">Watchlist Only (★)</option>
+                </select>
+              </div>
+              <div style="flex: 1; min-width: 140px;">
+                <select id="sortBy" class="select-input">
+                  <option value="price_desc">Price: High to Low</option>
+                  <option value="price_asc">Price: Low to High</option>
+                  <option value="change_desc">Top Gainers (%)</option>
+                  <option value="change_asc">Top Losers (%)</option>
+                  <option value="symbol_asc">Symbol: A to Z</option>
+                </select>
+              </div>
+              <button id="applyFilters" class="btn btn-primary" type="button" style="min-width: 100px;">
+                Apply
+              </button>
+              <button id="resetFilters" class="btn btn-ghost" type="button">
+                Reset
+              </button>
+            </div>
+
+            <div class="form-row" style="margin-top: 14px; margin-bottom: 0;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label for="minPrice" style="font-size: 0.8rem; margin-bottom: 4px;">Min Price (₹)</label>
+                <input id="minPrice" class="text-input" type="number" min="0" placeholder="0" />
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label for="maxPrice" style="font-size: 0.8rem; margin-bottom: 4px;">Max Price (₹)</label>
+                <input id="maxPrice" class="text-input" type="number" min="0" placeholder="15000" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Stock Grid -->
+          <div id="marketGrid" class="market-grid">
+            <!-- Skeleton cards while loading -->
+            <div class="stock-card glass skeleton skeleton-card"></div>
+            <div class="stock-card glass skeleton skeleton-card"></div>
+            <div class="stock-card glass skeleton skeleton-card"></div>
+            <div class="stock-card glass skeleton skeleton-card"></div>
+            <div class="stock-card glass skeleton skeleton-card"></div>
+            <div class="stock-card glass skeleton skeleton-card"></div>
+          </div>
+
+          <!-- Pagination -->
+          <div id="pagination" class="section" style="display:flex; justify-content:center; align-items:center; gap:8px; flex-wrap: wrap; margin-top: 24px;"></div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      const marketState = {
+        page: 0,
+        size: 9,
+        query: '',
+        sector: '',
+        minPrice: '',
+        maxPrice: '',
+        sortBy: 'price',
+        sortDir: 'desc',
+        movement: 'all',
+        watchedIds: new Set(),
+        previousPrices: new Map() // stockId -> previousPrice
+      };
+
+      let livePollingInterval = null;
+
+      function createStockCard(stock, isWatched) {
+        const positive = Number(stock.changePercent) >= 0;
+        const stockPrice = Number(stock.price || 0);
+        const arrow = positive ? '▲' : '▼';
+        const sign = positive ? '+' : '';
+
+        // Dynamic 6-point sparkline
+        const spark = createSparkline([
+          stockPrice * (positive ? 0.95 : 1.05),
+          stockPrice * (positive ? 0.97 : 1.03),
+          stockPrice * (positive ? 0.99 : 1.01),
+          stockPrice * (positive ? 1.01 : 0.98),
+          stockPrice * (positive ? 1.03 : 0.97),
+          stockPrice
+        ], positive);
+
+        return `
+          <article class="stock-card glass" id="stockCard-${stock.id}" data-stock-id="${stock.id}">
+            <div class="stock-head">
+              <div>
+                <div class="stock-symbol" style="font-size: 1.12rem;">${stock.symbol}</div>
+                <div class="stock-name" style="font-size: 0.84rem;">${stock.companyName}</div>
+              </div>
+              <button class="watch-btn ${isWatched ? 'active' : ''}" data-watch-id="${stock.id}" aria-label="Toggle watchlist" title="${isWatched ? 'Remove from watchlist' : 'Add to watchlist'}">
+                ${isWatched ? '★' : '☆'}
+              </button>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin: 12px 0 6px;">
+              <div>
+                <div style="font-size:0.75rem; color:var(--muted); text-transform:uppercase;">Price</div>
+                <div class="stock-price" id="priceDisplay-${stock.id}" style="font-size: 1.35rem; font-weight: 800;">
+                  ${formatCurrency(stockPrice)}
+                </div>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-size:0.75rem; color:var(--muted); text-transform:uppercase;">Day Change</div>
+                <span class="stock-chip ${positive ? 'positive' : 'negative'}" id="chipDisplay-${stock.id}">
+                  ${arrow} ${sign}${Number(stock.changePercent || 0).toFixed(2)}%
+                </span>
+              </div>
+            </div>
+
+            <div style="margin: 8px 0;">
+              ${spark}
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.78rem; color:var(--muted); margin-bottom: 12px;">
+              <span>Sector: <strong style="color:var(--text);">${stock.sector || 'General'}</strong></span>
+            </div>
+
+            <div class="stock-footer">
+              <a class="link-btn" href="trade.html?symbol=${encodeURIComponent(stock.symbol)}&action=buy" style="background: var(--primary); color: #fff; font-weight:700;">Buy</a>
+              <a class="link-btn" href="stock.html?symbol=${encodeURIComponent(stock.symbol)}">Details</a>
+            </div>
+          </article>
+        `;
+      }
+
+      async function loadMarketPage() {
+        try {
+          // Fetch watchlist if logged in
+          if (isLoggedIn()) {
+            try {
+              const watchlist = await apiGet('/api/watchlist');
+              marketState.watchedIds = new Set((watchlist || []).map(item => item.stockId));
+            } catch (wErr) {
+              marketState.watchedIds = new Set();
+            }
+          } else {
+            marketState.watchedIds = new Set();
+          }
+
+          let endpoint;
+          if (marketState.movement === 'watchlist') {
+            if (!isLoggedIn()) {
+              showToast('Please sign in to view your watchlist.', 'info');
+              window.location.href = 'login.html';
+              return;
+            }
+            const watchlist = await apiGet('/api/watchlist');
+            const marketGrid = document.getElementById('marketGrid');
+            const pagination = document.getElementById('pagination');
+
+            if (!watchlist.length) {
+              marketGrid.innerHTML = renderEmptyState('Your watchlist is currently empty. Click the star on any stock to add it!');
+              pagination.innerHTML = '';
+              return;
+            }
+
+            marketGrid.innerHTML = watchlist.map(item => {
+              const stock = {
+                id: item.stockId,
+                symbol: item.symbol,
+                companyName: item.companyName,
+                price: item.price,
+                changePercent: item.changePercent,
+                sector: item.sector
+              };
+              marketState.previousPrices.set(stock.id, stock.price);
+              return createStockCard(stock, true);
+            }).join('');
+            pagination.innerHTML = '';
+            bindWatchlistButtons();
+            return;
+          }
+
+          // Standard / Filtered Pagination API
+          endpoint = `/api/stocks/paged?query=${encodeURIComponent(marketState.query)}` +
+            `&sector=${encodeURIComponent(marketState.sector)}` +
+            `&minPrice=${encodeURIComponent(marketState.minPrice)}` +
+            `&maxPrice=${encodeURIComponent(marketState.maxPrice)}` +
+            `&page=${marketState.page}` +
+            `&size=${marketState.size}` +
+            `&sortBy=${encodeURIComponent(marketState.sortBy)}` +
+            `&sortDir=${encodeURIComponent(marketState.sortDir)}`;
+
+          const pageData = await apiGet(endpoint);
+          const marketGrid = document.getElementById('marketGrid');
+          const pagination = document.getElementById('pagination');
+
+          let rows = pageData?.content || [];
+
+          // Handle client-side movement filter (gainers/losers)
+          if (marketState.movement === 'gainers') {
+            rows = rows.filter(s => Number(s.changePercent) >= 0);
+          } else if (marketState.movement === 'losers') {
+            rows = rows.filter(s => Number(s.changePercent) < 0);
+          }
+
+          if (!rows.length) {
+            marketGrid.innerHTML = renderEmptyState('No stocks found matching your filters.', '<button class="btn btn-secondary" onclick="resetFiltersAndReload()" style="margin-top:10px;">Clear Filters</button>');
+            pagination.innerHTML = '';
+            return;
+          }
+
+          // Cache initial prices for flash animation comparison
+          rows.forEach(s => marketState.previousPrices.set(s.id, s.price));
+
+          marketGrid.innerHTML = rows.map(stock => createStockCard(stock, marketState.watchedIds.has(stock.id))).join('');
+
+          // Render Pagination
+          pagination.innerHTML = '';
+          const totalPages = Number(pageData.totalPages || 0);
+
+          if (totalPages > 1) {
+            for (let i = 0; i < totalPages; i++) {
+              const btn = document.createElement('button');
+              btn.type = 'button';
+              btn.className = `btn ${i === marketState.page ? 'btn-primary' : 'btn-secondary'}`;
+              btn.textContent = String(i + 1);
+              btn.style.minWidth = '40px';
+              btn.addEventListener('click', () => {
+                marketState.page = i;
+                loadMarketPage();
+                window.scrollTo({ top: 120, behavior: 'smooth' });
+              });
+              pagination.appendChild(btn);
+            }
+          }
+
+          bindWatchlistButtons();
+
+        } catch (error) {
+          showToast(error.message || 'Unable to load stock listings.', 'error');
+        }
+      }
+
+      function bindWatchlistButtons() {
+        document.querySelectorAll('[data-watch-id]').forEach(button => {
+          button.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (!isLoggedIn()) {
+              showToast('Please login to manage your watchlist.', 'info');
+              setTimeout(() => window.location.href = 'login.html', 500);
+              return;
+            }
+
+            const stockId = Number(button.dataset.watchId);
+            const isCurrentlyActive = button.classList.contains('active');
+
+            try {
+              if (isCurrentlyActive) {
+                await apiDelete(`/api/watchlist/${stockId}`);
+                button.classList.remove('active');
+                button.textContent = '☆';
+                marketState.watchedIds.delete(stockId);
+                showToast('Removed from watchlist', 'info');
+              } else {
+                await apiPost(`/api/watchlist/${stockId}`);
+                button.classList.add('active');
+                button.textContent = '★';
+                marketState.watchedIds.add(stockId);
+                showToast('Added to watchlist', 'success');
+              }
+            } catch (err) {
+              showToast(err.message || 'Could not update watchlist.', 'error');
+            }
+          });
+        });
+      }
+
+      // Live price polling with green/red cell flash
+      async function pollLivePrices() {
+        try {
+          const liveStocks = await apiGet('/api/stocks/live');
+          if (!Array.isArray(liveStocks)) return;
+
+          liveStocks.forEach(stock => {
+            const priceEl = document.getElementById(`priceDisplay-${stock.id}`);
+            const chipEl = document.getElementById(`chipDisplay-${stock.id}`);
+
+            if (priceEl) {
+              const prevPrice = marketState.previousPrices.get(stock.id);
+              if (prevPrice !== undefined && prevPrice !== stock.price) {
+                const wentUp = stock.price > prevPrice;
+                priceEl.textContent = formatCurrency(stock.price);
+
+                // Apply flash animation
+                priceEl.classList.remove('price-flash-up', 'price-flash-down');
+                void priceEl.offsetWidth; // trigger reflow
+                priceEl.classList.add(wentUp ? 'price-flash-up' : 'price-flash-down');
+
+                setTimeout(() => {
+                  priceEl.classList.remove('price-flash-up', 'price-flash-down');
+                }, 1400);
+
+                if (chipEl) {
+                  const positive = Number(stock.changePercent) >= 0;
+                  chipEl.className = `stock-chip ${positive ? 'positive' : 'negative'}`;
+                  chipEl.textContent = `${positive ? '▲ +' : '▼ '}${Number(stock.changePercent || 0).toFixed(2)}%`;
+                }
+              }
+              marketState.previousPrices.set(stock.id, stock.price);
+            }
+          });
+        } catch (err) {
+          // Silent polling error
+        }
+      }
+
+      function resetFiltersAndReload() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('sectorFilter').value = '';
+        document.getElementById('movementFilter').value = 'all';
+        document.getElementById('sortBy').value = 'price_desc';
+        document.getElementById('minPrice').value = '';
+        document.getElementById('maxPrice').value = '';
+        marketState.query = '';
+        marketState.sector = '';
+        marketState.movement = 'all';
+        marketState.minPrice = '';
+        marketState.maxPrice = '';
+        marketState.sortBy = 'price';
+        marketState.sortDir = 'desc';
+        marketState.page = 0;
+        loadMarketPage();
+      }
+
+      document.addEventListener('DOMContentLoaded', async () => {
+        // Load sector options
+        try {
+          const sectors = await apiGet('/api/stocks/sectors');
+          const sectorSelect = document.getElementById('sectorFilter');
+          if (Array.isArray(sectors)) {
+            sectorSelect.innerHTML = '<option value="">All Sectors</option>' +
+              sectors.map(sec => `<option value="${sec}">${sec}</option>`).join('');
+          }
+        } catch (sErr) {
+          // ignore
+        }
+
+        // Apply filters handler
+        document.getElementById('applyFilters')?.addEventListener('click', () => {
+          marketState.query = document.getElementById('searchInput').value.trim();
+          marketState.sector = document.getElementById('sectorFilter').value;
+          marketState.movement = document.getElementById('movementFilter').value;
+          marketState.minPrice = document.getElementById('minPrice').value;
+          marketState.maxPrice = document.getElementById('maxPrice').value;
+
+          const sortVal = document.getElementById('sortBy').value;
+          if (sortVal === 'price_desc') {
+            marketState.sortBy = 'price'; marketState.sortDir = 'desc';
+          } else if (sortVal === 'price_asc') {
+            marketState.sortBy = 'price'; marketState.sortDir = 'asc';
+          } else if (sortVal === 'change_desc') {
+            marketState.sortBy = 'changePercent'; marketState.sortDir = 'desc';
+          } else if (sortVal === 'change_asc') {
+            marketState.sortBy = 'changePercent'; marketState.sortDir = 'asc';
+          } else if (sortVal === 'symbol_asc') {
+            marketState.sortBy = 'symbol'; marketState.sortDir = 'asc';
+          }
+
+          marketState.page = 0;
+          loadMarketPage();
+        });
+
+        // Reset filters handler
+        document.getElementById('resetFilters')?.addEventListener('click', resetFiltersAndReload);
+
+        // Load initial page
+        await loadMarketPage();
+
+        // Start live prices polling every 4 seconds
+        livePollingInterval = setInterval(pollLivePrices, 4000);
+      });
+
+      window.addEventListener('beforeunload', () => {
+        if (livePollingInterval) clearInterval(livePollingInterval);
+      });
+    </script>
+  </body>
+</html>

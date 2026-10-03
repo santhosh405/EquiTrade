@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trade History | EquiTrade</title>
+    <meta name="description" content="View executed trade order logs, filter by buy/sell transactions, and export trading journals to CSV." />
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <script src="js/api.js" defer></script>
+    <script src="js/auth.js" defer></script>
+    <script src="js/ui.js" defer></script>
+    <script src="js/components.js" defer></script>
+  </head>
+  <body data-page="history">
+    <main class="page-shell">
+      <div class="container">
+        <!-- Section Header -->
+        <section class="section" style="padding-bottom: 8px;">
+          <div class="section-header">
+            <div>
+              <h2>Trade Order History</h2>
+              <div class="section-subtitle">Audit trail of all executed market orders, buy/sell activities and historical prices.</div>
+            </div>
+            <button id="exportCsvBtn" class="btn btn-primary" type="button" style="display:flex; align-items:center; gap:8px;">
+              <span>📥</span> Export CSV Journal
+            </button>
+          </div>
+
+          <!-- Filters Toolbar -->
+          <div class="panel-card glass" style="padding: 18px 24px; margin-bottom: 20px;">
+            <div class="toolbar" style="display:flex; gap:14px; flex-wrap:wrap; align-items:center;">
+              <div style="flex: 1; min-width: 160px;">
+                <select id="historyTypeFilter" class="select-input">
+                  <option value="all">All Actions (BUY & SELL)</option>
+                  <option value="BUY">BUY Orders Only</option>
+                  <option value="SELL">SELL Orders Only</option>
+                </select>
+              </div>
+              <div style="flex: 2; min-width: 240px;">
+                <input id="historyQueryInput" class="text-input" type="text" placeholder="Search by ticker symbol or company name..." />
+              </div>
+              <button id="resetHistoryBtn" class="btn btn-ghost" type="button">Reset</button>
+            </div>
+          </div>
+
+          <!-- History Table -->
+          <div class="panel-card glass" style="padding: 24px;">
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th>Security</th>
+                    <th>Shares</th>
+                    <th>Unit Price</th>
+                    <th>Total Value</th>
+                    <th>Executed At</th>
+                  </tr>
+                </thead>
+                <tbody id="historyTableBody">
+                  <tr><td colspan="6"><div class="skeleton skeleton-text" style="height:32px;"></div></td></tr>
+                  <tr><td colspan="6"><div class="skeleton skeleton-text" style="height:32px;"></div></td></tr>
+                  <tr><td colspan="6"><div class="skeleton skeleton-text" style="height:32px;"></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      let fullHistoryList = [];
+
+      async function loadTradeHistory() {
+        if (redirectToLoginIfNeeded()) return;
+
+        try {
+          showPageLoader();
+          const data = await apiGet('/api/trade/history');
+          fullHistoryList = Array.isArray(data) ? data : [];
+          renderHistoryTable();
+        } catch (error) {
+          showToast(error.message || 'Unable to load trade history.', 'error');
+        } finally {
+          hidePageLoader();
+        }
+      }
+
+      function renderHistoryTable() {
+        const typeFilter = document.getElementById('historyTypeFilter').value;
+        const queryText = (document.getElementById('historyQueryInput').value || '').trim().toLowerCase();
+        const tbody = document.getElementById('historyTableBody');
+
+        const filtered = fullHistoryList.filter(item => {
+          const matchesType = typeFilter === 'all' || item.type === typeFilter;
+          const sym = (item.stockSymbol || '').toLowerCase();
+          const comp = (item.companyName || '').toLowerCase();
+          const matchesQuery = !queryText || sym.includes(queryText) || comp.includes(queryText);
+          return matchesType && matchesQuery;
+        });
+
+        if (!filtered.length) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="6">
+                <div class="empty-state" style="padding: 36px 20px;">
+                  <div>No transactions found matching your criteria.</div>
+                  <a class="btn btn-secondary" href="trade.html" style="margin-top:12px; display:inline-block;">Place a Trade Order</a>
+                </div>
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        tbody.innerHTML = filtered.map(t => {
+          const isBuy = t.type === 'BUY';
+          const dateStr = t.date ? new Date(t.date).toLocaleString('en-IN', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          }) : 'N/A';
+
+          return `
+            <tr>
+              <td>
+                <span class="stock-chip ${isBuy ? 'positive' : 'negative'}" style="font-weight:700; padding:4px 10px;">
+                  ${isBuy ? '▲ BUY' : '▼ SELL'}
+                </span>
+              </td>
+              <td>
+                <div>
+                  <strong style="font-size:1.02rem;">${t.stockSymbol}</strong>
+                  <div style="font-size:0.8rem; color:var(--muted);">${t.companyName || ''}</div>
+                </div>
+              </td>
+              <td><strong>${t.quantity}</strong></td>
+              <td>${formatCurrency(t.price)}</td>
+              <td style="font-weight:700; color:var(--text);">${formatCurrency(t.total || (t.quantity * t.price))}</td>
+              <td style="color:var(--muted); font-size:0.88rem;">${dateStr}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        loadTradeHistory();
+
+        document.getElementById('historyTypeFilter')?.addEventListener('change', renderHistoryTable);
+        document.getElementById('historyQueryInput')?.addEventListener('input', renderHistoryTable);
+        document.getElementById('resetHistoryBtn')?.addEventListener('click', () => {
+          document.getElementById('historyTypeFilter').value = 'all';
+          document.getElementById('historyQueryInput').value = '';
+          renderHistoryTable();
+        });
+
+        // Export CSV Handler
+        document.getElementById('exportCsvBtn')?.addEventListener('click', () => {
+          if (!fullHistoryList.length) {
+            showToast('No transaction data to export.', 'info');
+            return;
+          }
+
+          try {
+            const headers = ['Transaction ID', 'Order Type', 'Symbol', 'Company Name', 'Quantity', 'Price (INR)', 'Total Value (INR)', 'Date'];
+            const rows = fullHistoryList.map(t => [
+              t.id || '',
+              t.type,
+              t.stockSymbol,
+              t.companyName,
+              t.quantity,
+              t.price,
+              t.total || (t.quantity * t.price),
+              t.date ? new Date(t.date).toISOString() : ''
+            ]);
+
+            const csvContent = [
+              headers.join(','),
+              ...rows.map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `EquiTrade_Journal_${new Date().toISOString().slice(0, 10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            showToast('CSV trading journal exported successfully!', 'success');
+          } catch (err) {
+            showToast('Failed to export CSV.', 'error');
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

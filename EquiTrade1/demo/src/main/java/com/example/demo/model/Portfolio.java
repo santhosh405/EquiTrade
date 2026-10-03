@@ -10,13 +10,15 @@ public class Portfolio {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     private User user;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     private Stock stock;
 
     private int quantity;
+
+    private double averageBuyPrice;
 
     public Portfolio() {
     }
@@ -26,6 +28,15 @@ public class Portfolio {
         this.user = user;
         this.stock = stock;
         this.quantity = quantity;
+        this.averageBuyPrice = stock != null ? stock.getPrice() : 0.0;
+    }
+
+    public Portfolio(Long id, User user, Stock stock, int quantity, double averageBuyPrice) {
+        this.id = id;
+        this.user = user;
+        this.stock = stock;
+        this.quantity = quantity;
+        this.averageBuyPrice = averageBuyPrice;
     }
 
     public Long getId() {
@@ -58,5 +69,16 @@ public class Portfolio {
 
     public void setQuantity(int quantity) {
         this.quantity = quantity;
+    }
+
+    public double getAverageBuyPrice() {
+        if (averageBuyPrice <= 0 && stock != null) {
+            return stock.getPrice();
+        }
+        return averageBuyPrice;
+    }
+
+    public void setAverageBuyPrice(double averageBuyPrice) {
+        this.averageBuyPrice = averageBuyPrice;
     }
 }

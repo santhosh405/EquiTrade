@@ -15,6 +15,11 @@ public interface PortfolioRepository extends JpaRepository<Portfolio, Long> {
 
     List<Portfolio> findByUser(User user);
 
+    List<Portfolio> findByUserId(Long userId);
+
     Optional<Portfolio> findByUserAndStock(User user, Stock stock);
 
+    List<Portfolio> findByStock(Stock stock);
+
+    void deleteByStockId(Long stockId);
 }

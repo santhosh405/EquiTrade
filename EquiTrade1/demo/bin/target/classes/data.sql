@@ -1,0 +1,21 @@
+-- EquiTrade Seed Data
+INSERT INTO stocks (symbol, company_name, price, change_percent, sector) VALUES ('TCS', 'Tata Consultancy Services', 3650.50, 1.80, 'IT');
+INSERT INTO stocks (symbol, company_name, price, change_percent, sector) VALUES ('INFY', 'Infosys', 1480.75, -0.65, 'IT');
+INSERT INTO stocks (symbol, company_name, price, change_percent, sector) VALUES ('RELIANCE', 'Reliance Industries', 2750.25, 2.15, 'Energy');
+INSERT INTO stocks (symbol, company_name, price, change_percent, sector) VALUES ('HDFCBANK', 'HDFC Bank', 1655.80, 0.45, 'Banking');
+INSERT INTO stocks (symbol, company_name, price, change_percent, sector) VALUES ('WIPRO', 'Wipro', 495.60, -1.20, 'IT');
+INSERT INTO stocks (symbol, company_name, price, change_percent, sector) VALUES ('ICICIBANK', 'ICICI Bank', 1085.30, 1.65, 'Banking');
+INSERT INTO stocks (symbol, company_name, price, change_percent, sector) VALUES ('TATAMOTORS', 'Tata Motors', 940.10, 3.40, 'Auto');
+INSERT INTO stocks (symbol, company_name, price, change_percent, sector) VALUES ('BHARTIARTL', 'Bharti Airtel', 1210.00, 0.80, 'Telecom');
+INSERT INTO stocks (symbol, company_name, price, change_percent, sector) VALUES ('ITC', 'ITC Limited', 435.50, -0.30, 'FMCG');
+INSERT INTO stocks (symbol, company_name, price, change_percent, sector) VALUES ('SBIN', 'State Bank of India', 765.20, 1.10, 'Banking');
+INSERT INTO stocks (symbol, company_name, price, change_percent, sector) VALUES ('SUNPHARMA', 'Sun Pharmaceutical', 1520.40, 0.95, 'Pharma');
+INSERT INTO stocks (symbol, company_name, price, change_percent, sector) VALUES ('MARUTI', 'Maruti Suzuki', 12450.00, -0.75, 'Auto');
+INSERT INTO stocks (symbol, company_name, price, change_percent, sector) VALUES ('LNT', 'Larsen & Toubro', 3580.00, 1.45, 'Infrastructure');
+INSERT INTO stocks (symbol, company_name, price, change_percent, sector) VALUES ('BAJFINANCE', 'Bajaj Finance', 6890.00, -1.85, 'Finance');
+INSERT INTO stocks (symbol, company_name, price, change_percent, sector) VALUES ('TATASTEEL', 'Tata Steel', 156.40, 2.80, 'Metals');
+INSERT INTO stocks (symbol, company_name, price, change_percent, sector) VALUES ('HINDUNILVR', 'Hindustan Unilever', 2380.00, -0.40, 'FMCG');
+INSERT INTO stocks (symbol, company_name, price, change_percent, sector) VALUES ('ADANIENT', 'Adani Enterprises', 3120.00, 4.25, 'Energy');
+INSERT INTO stocks (symbol, company_name, price, change_percent, sector) VALUES ('KOTAKBANK', 'Kotak Mahindra Bank', 1780.00, -0.55, 'Banking');
+INSERT INTO stocks (symbol, company_name, price, change_percent, sector) VALUES ('TITAN', 'Titan Company', 3420.00, 1.30, 'Consumer');
+INSERT INTO stocks (symbol, company_name, price, change_percent, sector) VALUES ('ASIANPAINT', 'Asian Paints', 2860.00, -1.15, 'Consumer');

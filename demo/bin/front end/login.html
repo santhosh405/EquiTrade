@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login | EquiTrade</title>
+    <meta name="description" content="Sign in to your EquiTrade account to access your trade desk and portfolio." />
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <script src="js/api.js" defer></script>
+    <script src="js/auth.js" defer></script>
+    <script src="js/ui.js" defer></script>
+    <script src="js/components.js" defer></script>
+  </head>
+  <body data-page="login">
+    <main class="page-shell">
+      <div class="container" style="max-width: 500px; margin: 40px auto 0;">
+        <div class="panel-card glass" style="padding: 36px 32px;">
+          <div style="text-align:center; margin-bottom: 24px;">
+            <a href="index.html" class="brand" style="justify-content:center; margin-bottom: 16px;">
+              <svg width="38" height="38" viewBox="0 0 64 64" fill="none">
+                <rect width="64" height="64" rx="16" fill="url(#loginBrandGrad)"/>
+                <path d="M18 38 L28 26 L36 34 L46 20" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="46" cy="20" r="4.5" fill="#ffffff"/>
+                <defs>
+                  <linearGradient id="loginBrandGrad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+                    <stop stop-color="#4F7CFF"/>
+                    <stop offset="1" stop-color="#8B5CF6"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <span>EquiTrade</span>
+            </a>
+            <h2 style="margin: 0; font-size: 1.6rem;">Welcome back</h2>
+            <p style="color: var(--muted); margin-top: 6px; font-size: 0.92rem;">Sign in to access your trading desk and portfolio.</p>
+          </div>
+
+          <form id="loginForm" class="form-card">
+            <div class="form-group">
+              <label for="loginEmail">Email Address</label>
+              <input id="loginEmail" class="text-input" type="email" placeholder="name@example.com" required autocomplete="email" />
+            </div>
+            <div class="form-group">
+              <label for="loginPassword">Password</label>
+              <input id="loginPassword" class="text-input" type="password" placeholder="Enter your password" required autocomplete="current-password" />
+            </div>
+            <button class="btn btn-primary" type="submit" id="loginSubmitBtn" style="width: 100%; margin-top: 8px;">
+              Sign In
+            </button>
+
+            <div class="demo-accounts">
+              <div style="width: 100%; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">
+                ⚡ One-Click Demo Credentials:
+              </div>
+              <button type="button" class="demo-chip" id="fillAdmin">Admin (admin@equitrade.com)</button>
+              <button type="button" class="demo-chip" id="fillTrader">Trader (trader@equitrade.com)</button>
+              <button type="button" class="demo-chip" id="fillDemo">Demo User (demo@equitrade.com)</button>
+            </div>
+
+            <div style="text-align:center; color: var(--muted); font-size: 0.9rem; margin-top: 14px;">
+              Don't have an account? <a href="register.html" style="color: var(--primary); font-weight: 700;">Create one</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const emailInput = document.getElementById('loginEmail');
+        const passInput = document.getElementById('loginPassword');
+
+        document.getElementById('fillAdmin')?.addEventListener('click', () => {
+          emailInput.value = 'admin@equitrade.com';
+          passInput.value = 'admin123';
+        });
+
+        document.getElementById('fillTrader')?.addEventListener('click', () => {
+          emailInput.value = 'trader@equitrade.com';
+          passInput.value = 'trader123';
+        });
+
+        document.getElementById('fillDemo')?.addEventListener('click', () => {
+          emailInput.value = 'demo@equitrade.com';
+          passInput.value = 'demo123';
+        });
+
+        document.getElementById('loginForm')?.addEventListener('submit', async (event) => {
+          event.preventDefault();
+          const email = emailInput.value.trim();
+          const password = passInput.value.trim();
+          const submitBtn = document.getElementById('loginSubmitBtn');
+
+          if (!email || !password) {
+            showToast('Please enter both email and password.', 'error');
+            return;
+          }
+
+          try {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Signing in...';
+            showPageLoader();
+
+            const response = await loginUser(email, password);
+            showToast('Login successful! Redirecting...', 'success');
+
+            setTimeout(() => {
+              if (response.role === 'ROLE_ADMIN') {
+                window.location.href = 'admin.html';
+              } else {
+                window.location.href = 'market.html';
+              }
+            }, 600);
+          } catch (error) {
+            showToast(error.message || 'Invalid email or password.', 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Sign In';
+            hidePageLoader();
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

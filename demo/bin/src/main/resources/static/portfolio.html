@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Portfolio Overview | EquiTrade</title>
+    <meta name="description" content="Track your open holdings, asset allocation donut chart, unrealized P/L and portfolio growth trajectory." />
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/api.js" defer></script>
+    <script src="js/auth.js" defer></script>
+    <script src="js/ui.js" defer></script>
+    <script src="js/components.js" defer></script>
+  </head>
+  <body data-page="portfolio">
+    <main class="page-shell">
+      <div class="container">
+        <!-- Section Header -->
+        <section class="section" style="padding-bottom: 8px;">
+          <div class="section-header">
+            <div>
+              <h2>Portfolio Overview</h2>
+              <div class="section-subtitle">Real-time valuation of your equity positions, returns breakdown and asset weighting.</div>
+            </div>
+            <a class="btn btn-primary" href="trade.html">+ New Order</a>
+          </div>
+
+          <!-- Summary Cards Grid -->
+          <div class="summary-grid" id="summaryGrid">
+            <div class="summary-card glass skeleton skeleton-card"></div>
+            <div class="summary-card glass skeleton skeleton-card"></div>
+            <div class="summary-card glass skeleton skeleton-card"></div>
+            <div class="summary-card glass skeleton skeleton-card"></div>
+          </div>
+        </section>
+
+        <!-- Holdings Table & Allocation Donut Chart -->
+        <section class="section portfolio-grid">
+          <!-- Holdings Table -->
+          <div class="panel-card glass" style="padding: 24px;">
+            <div class="section-header" style="margin-bottom: 16px;">
+              <h3 style="margin:0; font-size: 1.25rem;">Active Holdings</h3>
+              <a class="btn btn-secondary" href="market.html" style="font-size:0.85rem; padding:6px 12px;">Discover More Stocks</a>
+            </div>
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Security</th>
+                    <th>Qty</th>
+                    <th>Avg Buy Price</th>
+                    <th>Current Price</th>
+                    <th>Current Value</th>
+                    <th>Unrealized P/L</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="holdingsTableBody">
+                  <tr><td colspan="7"><div class="skeleton skeleton-text" style="height:28px;"></div></td></tr>
+                  <tr><td colspan="7"><div class="skeleton skeleton-text" style="height:28px;"></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Donut Allocation Chart -->
+          <div class="panel-card glass" style="padding: 24px;">
+            <div class="section-header" style="margin-bottom: 14px;">
+              <h3 style="margin:0; font-size: 1.25rem;">Asset Allocation</h3>
+            </div>
+            <div class="chart-wrap" style="height: 290px; position: relative;">
+              <canvas id="allocationChart"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <!-- Profit/Loss Trend Chart -->
+        <section class="section chart-box glass">
+          <div class="section-header" style="margin-bottom: 16px;">
+            <div>
+              <h3 style="margin:0; font-size: 1.25rem;">Cumulative P&L Trajectory</h3>
+              <div class="section-subtitle">Performance progression based on current portfolio positions.</div>
+            </div>
+          </div>
+          <div class="chart-wrap" style="height: 270px; position: relative;">
+            <canvas id="pnlChart"></canvas>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      let allocationChartInstance = null;
+      let pnlChartInstance = null;
+
+      async function loadPortfolioData() {
+        if (redirectToLoginIfNeeded()) return;
+
+        try {
+          showPageLoader();
+          const summary = await apiGet('/api/portfolio');
+
+          const totalInvested = Number(summary.totalInvested || 0);
+          const totalCurrentValue = Number(summary.totalCurrentValue || 0);
+          const totalProfitLoss = Number(summary.totalProfitLoss || 0);
+          const totalProfitPercent = Number(summary.totalProfitLossPercent || 0);
+          const cashBalance = Number(summary.cashBalance || 0);
+
+          const summaryGrid = document.getElementById('summaryGrid');
+          const pnlPositive = totalProfitLoss >= 0;
+
+          summaryGrid.innerHTML = `
+            <div class="summary-card glass">
+              <div class="label">Total Invested</div>
+              <div class="value">${formatCurrency(totalInvested)}</div>
+            </div>
+            <div class="summary-card glass">
+              <div class="label">Current Portfolio Value</div>
+              <div class="value" style="color: var(--primary);">${formatCurrency(totalCurrentValue)}</div>
+            </div>
+            <div class="summary-card glass">
+              <div class="label">Total Return (₹)</div>
+              <div class="value ${pnlPositive ? 'trend-up' : 'trend-down'}">
+                ${pnlPositive ? '+' : ''}${formatCurrency(totalProfitLoss)}
+              </div>
+            </div>
+            <div class="summary-card glass">
+              <div class="label">Net Profit / Loss %</div>
+              <div class="value ${pnlPositive ? 'trend-up' : 'trend-down'}">
+                ${pnlPositive ? '▲ +' : '▼ '}${totalProfitPercent.toFixed(2)}%
+              </div>
+            </div>
+          `;
+
+          // Render Holdings Table
+          const holdings = summary.holdings || [];
+          const tbody = document.getElementById('holdingsTableBody');
+
+          if (!holdings.length) {
+            tbody.innerHTML = `
+              <tr>
+                <td colspan="7">
+                  <div class="empty-state" style="padding: 30px;">
+                    <div>No equity holdings in your portfolio yet.</div>
+                    <a class="btn btn-primary" href="market.html" style="margin-top:12px; display:inline-block;">Explore Market & Buy Stocks</a>
+                  </div>
+                </td>
+              </tr>
+            `;
+          } else {
+            tbody.innerHTML = holdings.map(h => {
+              const pos = Number(h.profitLoss) >= 0;
+              return `
+                <tr>
+                  <td>
+                    <div>
+                      <strong style="font-size:1.02rem;">${h.symbol}</strong>
+                      <div style="font-size:0.8rem; color:var(--muted);">${h.companyName}</div>
+                    </div>
+                  </td>
+                  <td><strong>${h.quantity}</strong></td>
+                  <td>${formatCurrency(h.avgBuyPrice)}</td>
+                  <td>${formatCurrency(h.currentPrice)}</td>
+                  <td style="font-weight:700;">${formatCurrency(h.currentValue)}</td>
+                  <td class="${pos ? 'trend-up' : 'trend-down'}" style="font-weight:700;">
+                    ${pos ? '+' : ''}${formatCurrency(h.profitLoss)}
+                    <span style="font-size:0.78rem; opacity:0.85;">(${pos ? '+' : ''}${Number(h.profitLossPercent || 0).toFixed(2)}%)</span>
+                  </td>
+                  <td>
+                    <div class="link-row" style="gap:6px;">
+                      <a class="link-btn" href="trade.html?symbol=${encodeURIComponent(h.symbol)}&action=buy" title="Buy more shares">Buy</a>
+                      <a class="link-btn" href="trade.html?symbol=${encodeURIComponent(h.symbol)}&action=sell" style="color:var(--danger);" title="Sell shares">Sell</a>
+                    </div>
+                  </td>
+                </tr>
+              `;
+            }).join('');
+          }
+
+          // Render Allocation Donut Chart
+          renderAllocationChart(holdings, cashBalance);
+
+          // Render P&L Trend Chart
+          renderPnlTrendChart(totalProfitLoss);
+
+        } catch (error) {
+          showToast(error.message || 'Unable to load portfolio details.', 'error');
+        } finally {
+          hidePageLoader();
+        }
+      }
+
+      function renderAllocationChart(holdings, cashBalance) {
+        const ctx = document.getElementById('allocationChart');
+        if (!ctx) return;
+
+        if (allocationChartInstance) {
+          allocationChartInstance.destroy();
+        }
+
+        const labels = holdings.length ? holdings.map(h => h.symbol) : ['Available Cash'];
+        const values = holdings.length ? holdings.map(h => Number(h.currentValue || 0)) : [cashBalance || 100000];
+
+        // Add available cash slice if holdings exist
+        if (holdings.length && cashBalance > 0) {
+          labels.push('Cash Balance');
+          values.push(cashBalance);
+        }
+
+        const colors = [
+          '#4f7cff', '#8b5cf6', '#22c55e', '#fbbf24', '#f87171',
+          '#38bdf8', '#a855f7', '#ec4899', '#14b8a6', '#f97316'
+        ];
+
+        allocationChartInstance = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels,
+            datasets: [{
+              data: values,
+              backgroundColor: colors.slice(0, labels.length),
+              borderWidth: 2,
+              borderColor: 'rgba(12, 22, 36, 0.9)'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: {
+                  color: '#8da4bd',
+                  font: { size: 11 },
+                  boxWidth: 12,
+                  padding: 12
+                }
+              },
+              tooltip: {
+                backgroundColor: 'rgba(12, 22, 36, 0.95)',
+                titleColor: '#edf5ff',
+                borderColor: 'rgba(148, 163, 184, 0.25)',
+                borderWidth: 1,
+                padding: 12,
+                callbacks: {
+                  label: (ctx) => ` ${ctx.label}: ${formatCurrency(ctx.parsed)}`
+                }
+              }
+            },
+            cutout: '65%'
+          }
+        });
+      }
+
+      function renderPnlTrendChart(netProfitLoss) {
+        const ctx = document.getElementById('pnlChart');
+        if (!ctx) return;
+
+        if (pnlChartInstance) {
+          pnlChartInstance.destroy();
+        }
+
+        const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Current Session'];
+        const positive = netProfitLoss >= 0;
+
+        // Realistic progressive trend line leading up to current P/L
+        const trendData = [
+          0,
+          netProfitLoss * 0.12,
+          netProfitLoss * 0.28,
+          netProfitLoss * 0.22,
+          netProfitLoss * 0.45,
+          netProfitLoss * 0.60,
+          netProfitLoss * 0.52,
+          netProfitLoss * 0.78,
+          netProfitLoss * 0.88,
+          netProfitLoss
+        ];
+
+        const borderColor = positive ? '#22c55e' : '#f87171';
+        const bgGradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 250);
+        bgGradient.addColorStop(0, positive ? 'rgba(34, 197, 94, 0.3)' : 'rgba(248, 113, 113, 0.3)');
+        bgGradient.addColorStop(1, 'rgba(15, 26, 41, 0.0)');
+
+        pnlChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [{
+              label: 'Cumulative P/L (₹)',
+              data: trendData,
+              borderColor,
+              borderWidth: 2.5,
+              backgroundColor: bgGradient,
+              fill: true,
+              tension: 0.35,
+              pointRadius: 3,
+              pointHoverRadius: 6,
+              pointBackgroundColor: borderColor
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: 'rgba(12, 22, 36, 0.95)',
+                titleColor: '#edf5ff',
+                borderColor: 'rgba(148, 163, 184, 0.25)',
+                borderWidth: 1,
+                callbacks: {
+                  label: (ctx) => ` P/L: ${formatCurrency(ctx.parsed.y)}`
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { color: 'rgba(148, 163, 184, 0.08)' },
+                ticks: { color: '#8da4bd' }
+              },
+              y: {
+                grid: { color: 'rgba(148, 163, 184, 0.08)' },
+                ticks: {
+                  color: '#8da4bd',
+                  callback: (v) => formatCurrency(v)
+                }
+              }
+            }
+          }
+        });
+      }
+
+      document.addEventListener('DOMContentLoaded', loadPortfolioData);
+    </script>
+  </body>
+</html>

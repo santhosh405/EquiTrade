@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trade Desk | EquiTrade</title>
+    <meta name="description" content="Instant buy and sell execution desk with live market price calculation and portfolio balance validation." />
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <script src="js/api.js" defer></script>
+    <script src="js/auth.js" defer></script>
+    <script src="js/ui.js" defer></script>
+    <script src="js/components.js" defer></script>
+  </head>
+  <body data-page="trade">
+    <main class="page-shell">
+      <div class="container">
+        <section class="section detail-layout">
+          <!-- Order Execution Form Panel -->
+          <div class="panel-card glass" style="padding: 28px;">
+            <div class="section-header" style="margin-bottom: 20px;">
+              <div>
+                <h2 style="margin: 0; font-size: 1.5rem;">Trade Desk</h2>
+                <div class="section-subtitle">Execute instant market orders with live valuation checks.</div>
+              </div>
+            </div>
+
+            <form id="tradeForm" class="form-card">
+              <!-- Stock selection -->
+              <div class="form-group">
+                <label for="tradeStockSelect">Select Security</label>
+                <select id="tradeStockSelect" class="select-input" required></select>
+              </div>
+
+              <!-- Order Action (Buy / Sell) & Quantity -->
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="tradeAction">Order Action</label>
+                  <select id="tradeAction" class="select-input">
+                    <option value="buy">BUY (Long Position)</option>
+                    <option value="sell">SELL (Exit Position)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="tradeQty">Quantity (Shares)</label>
+                  <input id="tradeQty" class="text-input" type="number" min="1" step="1" value="1" required />
+                </div>
+              </div>
+
+              <!-- Live Order Breakdown Box -->
+              <div class="preview-box" style="margin-top: 8px; margin-bottom: 20px;">
+                <h4 style="margin: 0 0 12px; font-size: 0.95rem; color: var(--text); border-bottom: 1px solid var(--line); padding-bottom: 8px;">
+                  Live Order Summary
+                </h4>
+                <div class="metric-row">
+                  <span>Execution Price</span>
+                  <strong id="execPriceDisplay">₹0.00</strong>
+                </div>
+                <div class="metric-row">
+                  <span>Total Order Value</span>
+                  <strong id="orderValueDisplay" style="color: var(--primary);">₹0.00</strong>
+                </div>
+                <div class="metric-row">
+                  <span>Available Cash Balance</span>
+                  <strong id="userCashDisplay" style="color: var(--success);">₹0.00</strong>
+                </div>
+                <div class="metric-row" id="holdingRow" style="display:none;">
+                  <span>Current Shares Owned</span>
+                  <strong id="userHoldingDisplay">0 shares</strong>
+                </div>
+              </div>
+
+              <!-- Validation Alert Box -->
+              <div id="validationAlert" style="display:none; padding: 12px 14px; border-radius: 10px; margin-bottom: 16px; font-size: 0.88rem;"></div>
+
+              <button class="btn btn-primary" type="submit" id="submitOrderBtn" style="width: 100%; font-size: 1rem; padding: 14px;">
+                Place BUY Order
+              </button>
+            </form>
+          </div>
+
+          <!-- Selected Security Preview Sidebar -->
+          <aside class="panel-card glass" style="padding: 28px;">
+            <div class="section-header" style="margin-bottom: 16px;">
+              <h3 style="margin: 0; font-size: 1.15rem;">Security Snapshot</h3>
+            </div>
+            <div id="stockSnapshotBox">
+              <div class="empty-state">Select a security from the dropdown to view details.</div>
+            </div>
+          </aside>
+        </section>
+      </div>
+    </main>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmTradeModal" class="modal-backdrop">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 style="margin: 0; font-size: 1.25rem;">Confirm Trade Execution</h3>
+          <button class="btn btn-ghost" type="button" data-close-modal style="font-size:1.2rem; padding:4px 8px;">✕</button>
+        </div>
+        <div class="modal-body" style="padding: 20px 0;">
+          <p id="confirmTradeDescription" style="font-size: 1.05rem; line-height: 1.6; margin: 0;">
+            Are you sure you want to execute this order?
+          </p>
+          <div class="preview-box" style="margin-top: 16px;" id="modalOrderSummary"></div>
+        </div>
+        <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:12px;">
+          <button class="btn btn-ghost" type="button" data-close-modal>Cancel</button>
+          <button class="btn btn-primary" id="confirmOrderSubmitBtn" type="button">Confirm & Execute</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let allStocksList = [];
+      let currentPortfolio = null;
+      let selectedStock = null;
+      let pendingOrder = null;
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const targetSymbol = urlParams.get('symbol');
+      const targetAction = urlParams.get('action');
+
+      function calculateAndValidate() {
+        const stockSelect = document.getElementById('tradeStockSelect');
+        const stockId = Number(stockSelect.value || 0);
+        selectedStock = allStocksList.find(s => s.id === stockId) || null;
+
+        const action = document.getElementById('tradeAction').value;
+        const qty = Math.max(1, parseInt(document.getElementById('tradeQty').value || 1, 10));
+        const submitBtn = document.getElementById('submitOrderBtn');
+        const alertBox = document.getElementById('validationAlert');
+        const holdingRow = document.getElementById('holdingRow');
+
+        submitBtn.textContent = action === 'buy' ? `Place BUY Order` : `Place SELL Order`;
+        submitBtn.style.background = action === 'buy' ? 'var(--primary)' : 'var(--danger)';
+
+        if (!selectedStock) {
+          document.getElementById('execPriceDisplay').textContent = formatCurrency(0);
+          document.getElementById('orderValueDisplay').textContent = formatCurrency(0);
+          return;
+        }
+
+        const price = Number(selectedStock.price || 0);
+        const orderValue = price * qty;
+        const userCash = Number(currentPortfolio?.cashBalance ?? (getStoredUser()?.balance ?? 0));
+
+        // Find user holdings for this stock
+        const holding = (currentPortfolio?.holdings || []).find(h => h.stockId === selectedStock.id);
+        const ownedQty = holding ? holding.quantity : 0;
+
+        document.getElementById('execPriceDisplay').textContent = formatCurrency(price);
+        document.getElementById('orderValueDisplay').textContent = formatCurrency(orderValue);
+        document.getElementById('userCashDisplay').textContent = formatCurrency(userCash);
+
+        if (action === 'sell') {
+          holdingRow.style.display = 'flex';
+          document.getElementById('userHoldingDisplay').textContent = `${ownedQty} share(s)`;
+        } else {
+          holdingRow.style.display = 'none';
+        }
+
+        // Validate
+        let hasError = false;
+        let errorMsg = '';
+
+        if (action === 'buy') {
+          if (orderValue > userCash) {
+            hasError = true;
+            errorMsg = `Insufficient funds: Order value (${formatCurrency(orderValue)}) exceeds your available cash (${formatCurrency(userCash)}).`;
+          }
+        } else {
+          if (qty > ownedQty) {
+            hasError = true;
+            errorMsg = `Insufficient shares: You own ${ownedQty} share(s) of ${selectedStock.symbol}, cannot sell ${qty}.`;
+          }
+        }
+
+        if (hasError) {
+          alertBox.style.display = 'block';
+          alertBox.style.background = 'var(--danger-soft)';
+          alertBox.style.color = 'var(--danger)';
+          alertBox.style.border = '1px solid rgba(248, 113, 113, 0.3)';
+          alertBox.textContent = errorMsg;
+          submitBtn.disabled = true;
+        } else {
+          alertBox.style.display = 'none';
+          submitBtn.disabled = false;
+        }
+
+        // Update Snapshot Box
+        const positive = Number(selectedStock.changePercent) >= 0;
+        document.getElementById('stockSnapshotBox').innerHTML = `
+          <div class="stock-head" style="margin-bottom: 12px;">
+            <div>
+              <div class="stock-symbol" style="font-size: 1.2rem;">${selectedStock.symbol}</div>
+              <div class="stock-name">${selectedStock.companyName}</div>
+            </div>
+            <span class="stock-chip ${positive ? 'positive' : 'negative'}">
+              ${positive ? '▲ +' : '▼ '}${Number(selectedStock.changePercent || 0).toFixed(2)}%
+            </span>
+          </div>
+
+          <div class="meta-grid" style="margin-top: 14px;">
+            <div class="meta-item">
+              <div class="label">Current Price</div>
+              <div class="value" style="font-weight:700;">${formatCurrency(selectedStock.price)}</div>
+            </div>
+            <div class="meta-item">
+              <div class="label">Sector</div>
+              <div class="value">${selectedStock.sector || 'General'}</div>
+            </div>
+            <div class="meta-item">
+              <div class="label">Your Holding</div>
+              <div class="value">${ownedQty} share(s)</div>
+            </div>
+            <div class="meta-item">
+              <div class="label">Holding Value</div>
+              <div class="value">${formatCurrency(ownedQty * selectedStock.price)}</div>
+            </div>
+          </div>
+
+          <div style="margin-top: 16px;">
+            <a class="link-btn" href="stock.html?symbol=${encodeURIComponent(selectedStock.symbol)}" style="width:100%; text-align:center;">
+              View Full Price Chart →
+            </a>
+          </div>
+        `;
+      }
+
+      async function initializeTradeDesk() {
+        if (redirectToLoginIfNeeded()) return;
+
+        try {
+          showPageLoader();
+          const [stocks, portfolio] = await Promise.all([
+            apiGet('/api/stocks'),
+            apiGet('/api/portfolio')
+          ]);
+
+          allStocksList = stocks || [];
+          currentPortfolio = portfolio;
+
+          const selectEl = document.getElementById('tradeStockSelect');
+          selectEl.innerHTML = allStocksList.map(s => `
+            <option value="${s.id}">${s.symbol} · ${s.companyName} (₹${s.price})</option>
+          `).join('');
+
+          if (targetSymbol) {
+            const match = allStocksList.find(s => s.symbol.toUpperCase() === targetSymbol.toUpperCase());
+            if (match) selectEl.value = match.id;
+          }
+
+          if (targetAction && (targetAction === 'buy' || targetAction === 'sell')) {
+            document.getElementById('tradeAction').value = targetAction;
+          }
+
+          calculateAndValidate();
+
+        } catch (error) {
+          showToast(error.message || 'Unable to load trade desk data.', 'error');
+        } finally {
+          hidePageLoader();
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        initializeTradeDesk();
+
+        document.getElementById('tradeStockSelect')?.addEventListener('change', calculateAndValidate);
+        document.getElementById('tradeAction')?.addEventListener('change', calculateAndValidate);
+        document.getElementById('tradeQty')?.addEventListener('input', calculateAndValidate);
+
+        // Submit form: open modal
+        document.getElementById('tradeForm')?.addEventListener('submit', (e) => {
+          e.preventDefault();
+          if (!selectedStock) return;
+
+          const action = document.getElementById('tradeAction').value;
+          const qty = parseInt(document.getElementById('tradeQty').value || 1, 10);
+          const totalVal = selectedStock.price * qty;
+
+          pendingOrder = {
+            action,
+            stockId: selectedStock.id,
+            symbol: selectedStock.symbol,
+            companyName: selectedStock.companyName,
+            price: selectedStock.price,
+            quantity: qty,
+            totalValue: totalVal
+          };
+
+          const actionLabel = action.toUpperCase();
+          document.getElementById('confirmTradeDescription').innerHTML = `
+            You are about to execute a <strong>${actionLabel}</strong> order for <strong>${qty} share(s)</strong> of <strong>${selectedStock.symbol}</strong> (${selectedStock.companyName}).
+          `;
+
+          document.getElementById('modalOrderSummary').innerHTML = `
+            <div class="metric-row"><span>Unit Price</span><strong>${formatCurrency(selectedStock.price)}</strong></div>
+            <div class="metric-row"><span>Total Consideration</span><strong style="color:var(--primary); font-size:1.1rem;">${formatCurrency(totalVal)}</strong></div>
+          `;
+
+          openModal('confirmTradeModal');
+        });
+
+        // Confirm modal execution
+        document.getElementById('confirmOrderSubmitBtn')?.addEventListener('click', async () => {
+          if (!pendingOrder) return;
+
+          const confirmBtn = document.getElementById('confirmOrderSubmitBtn');
+          confirmBtn.disabled = true;
+          confirmBtn.textContent = 'Executing...';
+
+          try {
+            showPageLoader();
+            const endpoint = pendingOrder.action === 'buy' ? '/api/trade/buy' : '/api/trade/sell';
+            const user = getStoredUser();
+
+            const res = await apiPost(endpoint, {
+              stockId: pendingOrder.stockId,
+              quantity: pendingOrder.quantity,
+              userId: user?.id
+            }, { requireAuth: true });
+
+            closeModal('confirmTradeModal');
+            showToast(res.message || 'Order executed successfully!', 'success');
+
+            // Refresh cached balance
+            if (typeof refreshCurrentUserBalance === 'function') {
+              await refreshCurrentUserBalance();
+            }
+
+            setTimeout(() => {
+              window.location.href = 'portfolio.html';
+            }, 800);
+
+          } catch (err) {
+            showToast(err.message || 'Trade execution failed.', 'error');
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Confirm & Execute';
+            hidePageLoader();
+          }
+        });
+
+        bindModalClose('confirmTradeModal');
+      });
+    </script>
+  </body>
+</html>

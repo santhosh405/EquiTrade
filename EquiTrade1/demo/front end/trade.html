@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trade Desk | EquiTrade Trading Terminal</title>
+    <meta name="description" content="Full-page order execution desk with live market price calculation and portfolio balance validation." />
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+    <link rel="stylesheet" href="css/tokens.css" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <script src="js/api.js" defer></script>
+    <script src="js/auth.js" defer></script>
+    <script src="js/ui.js" defer></script>
+    <script src="js/components.js" defer></script>
+  </head>
+  <body data-page="trade">
+    <main class="page-shell">
+      <div class="container">
+        
+        <!-- Header -->
+        <div style="margin-bottom: var(--space-4);">
+          <h1 style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); letter-spacing: -0.02em;">Trade Desk</h1>
+          <div style="font-size: var(--font-size-sm); color: var(--color-slate); margin-top: 2px;">
+            Execute instant practice market orders with live valuation checks.
+          </div>
+        </div>
+
+        <!-- Two-Pane Order Desk Layout -->
+        <div class="two-pane-layout">
+          
+          <!-- Order Form Panel -->
+          <div class="panel" style="padding: var(--space-6);">
+            <form id="fullTradeForm">
+              <!-- Security Dropdown -->
+              <div class="form-group">
+                <label for="tradeStockSelect">Select Security</label>
+                <select id="tradeStockSelect" class="select-input" required>
+                  <option value="">Loading securities...</option>
+                </select>
+              </div>
+
+              <!-- Action Switch: Buy / Sell -->
+              <div class="order-action-switch" style="margin-bottom: var(--space-4);">
+                <button type="button" class="switch-btn active-buy" id="tradeBuyBtn">BUY (Long Position)</button>
+                <button type="button" class="switch-btn" id="tradeSellBtn">SELL (Exit Position)</button>
+              </div>
+
+              <!-- Quantity Input & Quick Increment Pills -->
+              <div class="form-group">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
+                  <label for="tradeQty" style="margin-bottom:0;">Order Quantity (Shares)</label>
+                  <span style="font-size: var(--font-size-xs); color: var(--color-slate);" id="tradeHoldingNote">Holding: 0 shares</span>
+                </div>
+                <input type="number" id="tradeQty" class="text-input" min="1" step="1" value="1" required />
+                <div class="qty-pills">
+                  <button type="button" class="qty-pill" data-add="1">+1</button>
+                  <button type="button" class="qty-pill" data-add="5">+5</button>
+                  <button type="button" class="qty-pill" data-add="10">+10</button>
+                  <button type="button" class="qty-pill" data-add="25">+25</button>
+                  <button type="button" class="qty-pill" data-add="50">+50</button>
+                  <button type="button" class="qty-pill" data-add="100">+100</button>
+                </div>
+              </div>
+
+              <!-- Order Summary Breakdown -->
+              <div class="order-summary-box">
+                <div class="summary-row">
+                  <span>Execution Price</span>
+                  <strong id="tradePriceDisplay" class="num">₹0.00</strong>
+                </div>
+                <div class="summary-row">
+                  <span>Practice Brokerage</span>
+                  <span>₹0.00 (Zero Fee)</span>
+                </div>
+                <div class="summary-row">
+                  <span>Estimated STT & Taxes</span>
+                  <span>₹0.00</span>
+                </div>
+                <div class="summary-row">
+                  <span>Available Practice Cash</span>
+                  <strong id="tradeCashDisplay" class="num">₹0.00</strong>
+                </div>
+                <div class="summary-row">
+                  <span>Total Order Value</span>
+                  <strong id="tradeTotalDisplay" class="num" style="color: var(--color-action);">₹0.00</strong>
+                </div>
+              </div>
+
+              <!-- Validation Alert -->
+              <div id="tradeAlert" style="display: none; padding: 10px 12px; border-radius: var(--radius-sm); font-size: var(--font-size-xs); margin-bottom: 16px;"></div>
+
+              <button type="submit" class="btn btn-primary btn-order-submit" id="tradeSubmitBtn" style="background-color: var(--color-gain);">
+                Place Buy Order
+              </button>
+            </form>
+          </div>
+
+          <!-- Security Snapshot Sidebar -->
+          <div class="panel" style="position: sticky; top: 72px;">
+            <div class="panel-header" style="margin-bottom: var(--space-3);">
+              <h3 class="panel-title">Security Snapshot</h3>
+              <span class="stock-chip positive" id="snapChip">+0.00%</span>
+            </div>
+
+            <div id="snapshotContent">
+              <div style="margin-bottom: var(--space-4);">
+                <div id="snapSymbol" style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold);">--</div>
+                <div id="snapCompany" style="font-size: var(--font-size-xs); color: var(--color-slate);">--</div>
+              </div>
+
+              <div class="num" id="snapPrice" style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); margin-bottom: var(--space-4);">
+                ₹0.00
+              </div>
+
+              <!-- Sparkline Chart -->
+              <div id="snapSparkline" style="margin-bottom: var(--space-4);"></div>
+
+              <div style="display: flex; flex-direction: column; gap: var(--space-2); font-size: var(--font-size-xs); border-top: 1px solid var(--color-border); padding-top: var(--space-3);">
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: var(--color-slate);">Sector</span>
+                  <strong id="snapSector">--</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: var(--color-slate);">Exchange</span>
+                  <strong>NSE (India)</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: var(--color-slate);">Current Position</span>
+                  <strong id="snapHoldingQty">0 shares</strong>
+                </div>
+              </div>
+
+              <div style="margin-top: var(--space-5);">
+                <a id="snapDetailLink" href="market.html" class="btn btn-secondary btn-sm" style="width: 100%;">
+                  Open Technical Chart →
+                </a>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </main>
+
+    <script>
+      let stockList = [];
+      let activeStock = null;
+      let userHoldings = [];
+      let userCash = 500000;
+      let orderAction = 'buy';
+
+      document.addEventListener('DOMContentLoaded', async () => {
+        if (redirectToLoginIfNeeded()) return;
+
+        const params = new URLSearchParams(window.location.search);
+        const querySymbol = params.get('symbol');
+        const queryAction = params.get('action');
+
+        if (queryAction === 'sell') {
+          orderAction = 'sell';
+          document.getElementById('tradeBuyBtn').className = 'switch-btn';
+          document.getElementById('tradeSellBtn').className = 'switch-btn active-sell';
+          document.getElementById('tradeSubmitBtn').style.backgroundColor = 'var(--color-loss)';
+        }
+
+        setupTradeDeskEvents();
+        await loadTradeDeskData(querySymbol);
+      });
+
+      async function loadTradeDeskData(initialSymbol) {
+        try {
+          const [stocks, holdings, profile] = await Promise.all([
+            apiGet('/api/stocks/live'),
+            apiGet('/api/portfolio/holdings').catch(() => []),
+            apiGet('/api/auth/me').catch(() => null)
+          ]);
+
+          stockList = stocks || [];
+          userHoldings = holdings || [];
+          userCash = profile ? profile.balance : (getStoredUser()?.balance || 500000);
+
+          // Populate Security Dropdown
+          const select = document.getElementById('tradeStockSelect');
+          select.innerHTML = stockList.map(s => `
+            <option value="${s.symbol}">${s.symbol} - ${s.companyName} (${formatCurrency(s.price)})</option>
+          `).join('');
+
+          if (initialSymbol) {
+            select.value = initialSymbol.toUpperCase();
+          }
+
+          onSelectStockChanged();
+
+        } catch (error) {
+          showToast(error.message || 'Unable to load trade desk.', 'error');
+        }
+      }
+
+      function onSelectStockChanged() {
+        const symbol = document.getElementById('tradeStockSelect').value;
+        activeStock = stockList.find(s => s.symbol === symbol) || stockList[0];
+        if (!activeStock) return;
+
+        // Holding check
+        const holding = userHoldings.find(h => h.stockSymbol === activeStock.symbol);
+        const holdingQty = holding ? holding.quantity : 0;
+
+        // Update Snapshot
+        document.getElementById('snapSymbol').textContent = activeStock.symbol;
+        document.getElementById('snapCompany').textContent = activeStock.companyName;
+        document.getElementById('snapPrice').textContent = formatCurrency(activeStock.price);
+        document.getElementById('snapSector').textContent = activeStock.sector || 'General';
+        document.getElementById('snapHoldingQty').textContent = `${holdingQty} shares`;
+        document.getElementById('snapDetailLink').href = `stock.html?symbol=${encodeURIComponent(activeStock.symbol)}`;
+
+        const pos = Number(activeStock.changePercent) >= 0;
+        const chip = document.getElementById('snapChip');
+        chip.className = `stock-chip ${pos ? 'positive' : 'negative'}`;
+        chip.textContent = `${pos ? '+' : ''}${Number(activeStock.changePercent).toFixed(2)}%`;
+
+        document.getElementById('snapSparkline').innerHTML = createSparkline(activeStock.sparkline || [], pos);
+
+        document.getElementById('tradeHoldingNote').textContent = `Holding: ${holdingQty} shares`;
+        updateOrderCalculations(holdingQty);
+      }
+
+      function updateOrderCalculations(holdingQty) {
+        if (!activeStock) return;
+        const qty = Math.max(1, parseInt(document.getElementById('tradeQty').value || 1, 10));
+        const total = qty * activeStock.price;
+        const isBuy = orderAction === 'buy';
+
+        document.getElementById('tradePriceDisplay').textContent = formatCurrency(activeStock.price);
+        document.getElementById('tradeCashDisplay').textContent = formatCurrency(userCash);
+        document.getElementById('tradeTotalDisplay').textContent = formatCurrency(total);
+
+        const submitBtn = document.getElementById('tradeSubmitBtn');
+        submitBtn.textContent = `${isBuy ? 'Place Buy Order' : 'Place Sell Order'} (${qty} ${activeStock.symbol})`;
+
+        const alertBox = document.getElementById('tradeAlert');
+        alertBox.style.display = 'none';
+        submitBtn.disabled = false;
+
+        if (isBuy && total > userCash) {
+          alertBox.style.display = 'block';
+          alertBox.style.backgroundColor = 'var(--color-loss-subtle)';
+          alertBox.style.color = 'var(--color-loss)';
+          alertBox.style.border = '1px solid var(--color-loss-border)';
+          alertBox.textContent = `Insufficient cash. Need ${formatCurrency(total - userCash)} more.`;
+          submitBtn.disabled = true;
+        } else if (!isBuy && qty > holdingQty) {
+          alertBox.style.display = 'block';
+          alertBox.style.backgroundColor = 'var(--color-loss-subtle)';
+          alertBox.style.color = 'var(--color-loss)';
+          alertBox.style.border = '1px solid var(--color-loss-border)';
+          alertBox.textContent = `You only own ${holdingQty} shares of ${activeStock.symbol}.`;
+          submitBtn.disabled = true;
+        }
+      }
+
+      function setupTradeDeskEvents() {
+        const select = document.getElementById('tradeStockSelect');
+        const buyBtn = document.getElementById('tradeBuyBtn');
+        const sellBtn = document.getElementById('tradeSellBtn');
+        const qtyInput = document.getElementById('tradeQty');
+        const form = document.getElementById('fullTradeForm');
+
+        select.addEventListener('change', onSelectStockChanged);
+
+        buyBtn.addEventListener('click', () => {
+          orderAction = 'buy';
+          buyBtn.className = 'switch-btn active-buy';
+          sellBtn.className = 'switch-btn';
+          document.getElementById('tradeSubmitBtn').style.backgroundColor = 'var(--color-gain)';
+          onSelectStockChanged();
+        });
+
+        sellBtn.addEventListener('click', () => {
+          orderAction = 'sell';
+          buyBtn.className = 'switch-btn';
+          sellBtn.className = 'switch-btn active-sell';
+          document.getElementById('tradeSubmitBtn').style.backgroundColor = 'var(--color-loss)';
+          onSelectStockChanged();
+        });
+
+        document.querySelectorAll('.qty-pill').forEach(pill => {
+          pill.addEventListener('click', () => {
+            const add = Number(pill.dataset.add || 1);
+            qtyInput.value = Number(qtyInput.value || 1) + add;
+            onSelectStockChanged();
+          });
+        });
+
+        qtyInput.addEventListener('input', onSelectStockChanged);
+
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          if (!activeStock) return;
+          const qty = parseInt(qtyInput.value || 1, 10);
+          const submitBtn = document.getElementById('tradeSubmitBtn');
+
+          try {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Executing Order...';
+            const endpoint = orderAction === 'buy' ? '/api/trade/buy' : '/api/trade/sell';
+            const res = await apiPost(endpoint, {
+              stockId: activeStock.id,
+              quantity: qty
+            });
+
+            showToast(`Order executed: ${orderAction.toUpperCase()} ${qty} ${activeStock.symbol}`, 'success');
+
+            if (res && res.newBalance !== undefined) {
+              userCash = res.newBalance;
+              const u = getStoredUser() || {};
+              u.balance = res.newBalance;
+              localStorage.setItem('equitrade_user', JSON.stringify(u));
+              document.querySelector('.user-balance').textContent = formatCurrency(res.newBalance);
+            }
+
+            // Refresh holdings
+            userHoldings = await apiGet('/api/portfolio/holdings').catch(() => []);
+            onSelectStockChanged();
+
+          } catch (err) {
+            showToast(err.message || 'Trade execution failed.', 'error');
+          } finally {
+            submitBtn.disabled = false;
+          }
+        });
+      }
+    </script>
+  </body>
+</html>

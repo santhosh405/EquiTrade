@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stock Detail | EquiTrade Trading Terminal</title>
+    <meta name="description" content="Technical candlestick chart, volume analysis, key valuation metrics, and instant order ticket." />
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+    <link rel="stylesheet" href="css/tokens.css" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="js/api.js" defer></script>
+    <script src="js/auth.js" defer></script>
+    <script src="js/ui.js" defer></script>
+    <script src="js/components.js" defer></script>
+    <style>
+      .range-bar-track {
+        height: 6px;
+        background-color: var(--color-mist);
+        border-radius: 3px;
+        position: relative;
+        margin: 6px 0;
+      }
+      .range-bar-fill {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        background-color: var(--color-action);
+        border-radius: 3px;
+      }
+      .range-bar-marker {
+        position: absolute;
+        top: -3px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background-color: var(--color-ink);
+        border: 2px solid var(--color-surface);
+        transform: translateX(-50%);
+      }
+      .stat-item {
+        padding: var(--space-2) 0;
+        border-bottom: 1px solid var(--color-border-subtle);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: var(--font-size-xs);
+      }
+      .stat-item:last-child {
+        border-bottom: none;
+      }
+      .stat-item span {
+        color: var(--color-slate);
+      }
+      .stat-item strong {
+        color: var(--color-ink);
+        font-weight: var(--font-weight-semibold);
+      }
+    </style>
+  </head>
+  <body data-page="market">
+    <main class="page-shell">
+      <div class="container">
+        
+        <!-- Breadcrumb & Stock Header -->
+        <div style="margin-bottom: var(--space-4);">
+          <a href="market.html" class="btn btn-ghost btn-sm" style="padding-left: 0; margin-bottom: var(--space-2);">
+            ← Back to Markets
+          </a>
+          <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: var(--space-3);">
+            <div>
+              <div style="display: flex; align-items: center; gap: var(--space-2);">
+                <h1 id="stockSymbol" style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); letter-spacing: -0.02em;">--</h1>
+                <span class="stock-chip positive" id="stockSectorBadge">NSE Equity</span>
+              </div>
+              <div id="stockCompanyName" style="font-size: var(--font-size-sm); color: var(--color-slate); margin-top: 2px;">Loading company...</div>
+            </div>
+
+            <div style="text-align: right;">
+              <div class="num" id="stockPrice" style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-ink);">₹0.00</div>
+              <div style="display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); margin-top: 2px;">
+                <span class="num" id="stockDayAmt" style="font-weight: var(--font-weight-semibold); font-size: var(--font-size-sm);">--</span>
+                <span class="stock-chip positive" id="stockChangeChip">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Two-Pane Layout: Left = Large Chart & Stats, Right = Sticky Order Ticket -->
+        <div class="two-pane-layout">
+          
+          <!-- =================================================================
+               LEFT PANE: TradingView Chart + Key Statistics + Position
+               ================================================================= -->
+          <div>
+            <!-- Technical Chart Panel -->
+            <div class="chart-box" style="margin-bottom: var(--space-5);">
+              <div class="chart-controls-bar">
+                <!-- Type Toggle: Candles / Line / Area -->
+                <div class="chart-ctrl-group" id="chartTypeGroup">
+                  <button type="button" class="chart-ctrl-btn active" data-type="candles">Candles</button>
+                  <button type="button" class="chart-ctrl-btn" data-type="line">Line</button>
+                  <button type="button" class="chart-ctrl-btn" data-type="area">Area</button>
+                </div>
+
+                <!-- MA Overlays -->
+                <div class="chart-ctrl-group">
+                  <button type="button" class="chart-overlay-chip ma20" id="toggleMa20" aria-pressed="false">MA20</button>
+                  <button type="button" class="chart-overlay-chip ma50" id="toggleMa50" aria-pressed="false">MA50</button>
+                </div>
+
+                <!-- Range Selector: 1D, 1W, 1M, 3M, 1Y, ALL -->
+                <div class="chart-ctrl-group" id="rangeGroup">
+                  <button type="button" class="chart-ctrl-btn" data-range="1D">1D</button>
+                  <button type="button" class="chart-ctrl-btn" data-range="1W">1W</button>
+                  <button type="button" class="chart-ctrl-btn active" data-range="1M">1M</button>
+                  <button type="button" class="chart-ctrl-btn" data-range="3M">3M</button>
+                  <button type="button" class="chart-ctrl-btn" data-range="1Y">1Y</button>
+                  <button type="button" class="chart-ctrl-btn" data-range="ALL">ALL</button>
+                </div>
+              </div>
+
+              <!-- Lightweight Chart Mount Target & HUD Tooltip -->
+              <div class="tv-chart-container" id="tvContainerWrap">
+                <div id="tvHud" class="tv-crosshair-hud">
+                  <div class="tv-hud-item"><span>Time:</span> <strong id="hudTime">--</strong></div>
+                  <div class="tv-hud-item"><span>O:</span> <strong id="hudOpen">--</strong></div>
+                  <div class="tv-hud-item"><span>H:</span> <strong id="hudHigh">--</strong></div>
+                  <div class="tv-hud-item"><span>L:</span> <strong id="hudLow">--</strong></div>
+                  <div class="tv-hud-item"><span>C:</span> <strong id="hudClose">--</strong></div>
+                  <div class="tv-hud-item"><span>Vol:</span> <strong id="hudVol">--</strong></div>
+                  <div class="tv-hud-item"><span>Chg:</span> <strong id="hudChg">--</strong></div>
+                </div>
+
+                <div id="tvSkeleton" class="skeleton" style="width: 100%; height: 100%; position: absolute; inset: 0; z-index: 2;"></div>
+                <div id="tvChartMount" style="width: 100%; height: 100%;"></div>
+              </div>
+            </div>
+
+            <!-- Key Statistics & Range Bars Panel -->
+            <div class="panel" style="margin-bottom: var(--space-5);">
+              <div class="panel-header">
+                <h3 class="panel-title">Market Telemetry & Statistics</h3>
+                <span style="font-size: var(--font-size-xs); color: var(--color-slate);">NSE Session</span>
+              </div>
+
+              <!-- Day & 52-Week Range Visual Bars -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); margin-bottom: var(--space-5);">
+                <div>
+                  <div style="display: flex; justify-content: space-between; font-size: var(--font-size-xs); color: var(--color-slate);">
+                    <span>Day Low: <strong id="dayLowVal" class="num" style="color:var(--color-ink);">--</strong></span>
+                    <span>Day High: <strong id="dayHighVal" class="num" style="color:var(--color-ink);">--</strong></span>
+                  </div>
+                  <div class="range-bar-track">
+                    <div class="range-bar-fill" id="dayRangeFill" style="left: 0%; width: 50%;"></div>
+                    <div class="range-bar-marker" id="dayRangeMarker" style="left: 50%;"></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div style="display: flex; justify-content: space-between; font-size: var(--font-size-xs); color: var(--color-slate);">
+                    <span>52W Low: <strong id="yearLowVal" class="num" style="color:var(--color-ink);">--</strong></span>
+                    <span>52W High: <strong id="yearHighVal" class="num" style="color:var(--color-ink);">--</strong></span>
+                  </div>
+                  <div class="range-bar-track">
+                    <div class="range-bar-fill" id="yearRangeFill" style="left: 0%; width: 50%;"></div>
+                    <div class="range-bar-marker" id="yearRangeMarker" style="left: 50%;"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Metrics Grid -->
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0 var(--space-5);">
+                <div class="stat-item"><span>Previous Close</span><strong id="statPrevClose" class="num">--</strong></div>
+                <div class="stat-item"><span>Open Price</span><strong id="statOpen" class="num">--</strong></div>
+                <div class="stat-item"><span>Volume</span><strong id="statVolume" class="num">--</strong></div>
+                <div class="stat-item"><span>Avg Volume (30D)</span><strong id="statAvgVol" class="num">--</strong></div>
+                <div class="stat-item"><span>Market Sector</span><strong id="statSector">--</strong></div>
+                <div class="stat-item"><span>Exchange</span><strong>NSE (India)</strong></div>
+              </div>
+            </div>
+
+            <!-- Position in this Stock Panel -->
+            <div class="panel" id="userPositionPanel">
+              <div class="panel-header">
+                <h3 class="panel-title">Your Position in this Stock</h3>
+                <span class="stock-chip positive" id="posStatusChip">Holdings Active</span>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--space-4);" id="posMetricsGrid">
+                <div>
+                  <div style="font-size: var(--font-size-xs); color: var(--color-slate); margin-bottom: 2px;">Shares Owned</div>
+                  <div class="num" id="posShares" style="font-size: var(--font-size-lg); font-weight: var(--font-weight-bold);">0</div>
+                </div>
+                <div>
+                  <div style="font-size: var(--font-size-xs); color: var(--color-slate); margin-bottom: 2px;">Avg Buy Price</div>
+                  <div class="num" id="posAvgPrice" style="font-size: var(--font-size-lg); font-weight: var(--font-weight-bold);">₹0.00</div>
+                </div>
+                <div>
+                  <div style="font-size: var(--font-size-xs); color: var(--color-slate); margin-bottom: 2px;">Current Value</div>
+                  <div class="num" id="posCurValue" style="font-size: var(--font-size-lg); font-weight: var(--font-weight-bold);">₹0.00</div>
+                </div>
+                <div>
+                  <div style="font-size: var(--font-size-xs); color: var(--color-slate); margin-bottom: 2px;">Unrealized P&L</div>
+                  <div class="num" id="posPnl" style="font-size: var(--font-size-lg); font-weight: var(--font-weight-bold);">₹0.00 (0.00%)</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- =================================================================
+               RIGHT PANE: Sticky Order Ticket
+               ================================================================= -->
+          <div>
+            <div class="panel" style="position: sticky; top: 72px;">
+              <div class="panel-header" style="margin-bottom: var(--space-3);">
+                <h3 class="panel-title">Order Ticket</h3>
+                <span style="font-size: var(--font-size-xs); color: var(--color-slate);">NSE Market Order</span>
+              </div>
+
+              <!-- Buy/Sell Switch -->
+              <div class="order-action-switch">
+                <button type="button" class="switch-btn active-buy" id="ticketBuyBtn">BUY</button>
+                <button type="button" class="switch-btn" id="ticketSellBtn">SELL</button>
+              </div>
+
+              <!-- Quantity Input -->
+              <div class="form-group">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
+                  <label for="ticketQty" style="margin-bottom:0;">Quantity (Shares)</label>
+                  <span style="font-size: var(--font-size-xs); color: var(--color-slate);" id="ticketHoldingLabel">Holding: 0</span>
+                </div>
+                <input type="number" id="ticketQty" class="text-input" min="1" step="1" value="1" />
+                <div class="qty-pills">
+                  <button type="button" class="qty-pill" data-add="1">+1</button>
+                  <button type="button" class="qty-pill" data-add="5">+5</button>
+                  <button type="button" class="qty-pill" data-add="10">+10</button>
+                  <button type="button" class="qty-pill" data-add="25">+25</button>
+                  <button type="button" class="qty-pill" data-add="100">+100</button>
+                </div>
+              </div>
+
+              <!-- Order Summary Breakdown -->
+              <div class="order-summary-box">
+                <div class="summary-row">
+                  <span>Price</span>
+                  <strong id="ticketPriceDisplay" class="num">₹0.00</strong>
+                </div>
+                <div class="summary-row">
+                  <span>Practice Brokerage</span>
+                  <span>₹0.00 (Free)</span>
+                </div>
+                <div class="summary-row">
+                  <span>Estimated Taxes</span>
+                  <span>₹0.00</span>
+                </div>
+                <div class="summary-row">
+                  <span>Available Cash</span>
+                  <strong id="ticketCashDisplay" class="num">₹0.00</strong>
+                </div>
+                <div class="summary-row">
+                  <span>Order Total</span>
+                  <strong id="ticketTotalDisplay" class="num" style="color: var(--color-action);">₹0.00</strong>
+                </div>
+              </div>
+
+              <!-- Alert Box -->
+              <div id="ticketAlert" style="display: none; padding: 10px 12px; border-radius: var(--radius-sm); font-size: var(--font-size-xs); margin-bottom: 16px;"></div>
+
+              <button type="button" class="btn btn-primary btn-order-submit" id="ticketSubmitBtn" style="background-color: var(--color-gain);">
+                Place Buy Order
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </main>
+
+    <script>
+      let currentStock = null;
+      let userHoldings = [];
+      let currentHoldingQty = 0;
+      let userBalance = 500000;
+      let ticketAction = 'buy';
+
+      // TradingView Chart Engine Variables
+      let tvChart = null;
+      let candleSeries = null;
+      let lineSeries = null;
+      let areaSeries = null;
+      let volumeSeries = null;
+      let ma20Series = null;
+      let ma50Series = null;
+
+      let currentChartType = 'candles';
+      let currentRange = '1M';
+      let showMa20 = false;
+      let showMa50 = false;
+      let candleDataCache = [];
+
+      document.addEventListener('DOMContentLoaded', async () => {
+        const params = new URLSearchParams(window.location.search);
+        const symbol = params.get('symbol') || 'TCS';
+
+        setupTicketEvents();
+        setupChartControls();
+        await loadStockData(symbol);
+
+        // Theme toggle updates chart colors
+        window.addEventListener('themeChanged', () => {
+          updateChartTheme();
+        });
+      });
+
+      async function loadStockData(symbol) {
+        try {
+          const [stock, holdings, profile] = await Promise.all([
+            apiGet(`/api/stocks/symbol/${encodeURIComponent(symbol)}`).catch(() => apiGet(`/api/stocks/${encodeURIComponent(symbol)}`)),
+            apiGet('/api/portfolio/holdings').catch(() => []),
+            apiGet('/api/auth/me').catch(() => null)
+          ]);
+
+          currentStock = stock;
+          userHoldings = holdings || [];
+          const holding = userHoldings.find(h => h.stockSymbol === stock.symbol);
+          currentHoldingQty = holding ? holding.quantity : 0;
+          userBalance = profile ? profile.balance : (getStoredUser()?.balance || 500000);
+
+          renderStockHeader(stock);
+          renderStockStats(stock);
+          renderUserPosition(holding, stock);
+          updateTicketState();
+
+          // Initialize Technical Chart
+          await initTechnicalChart(symbol);
+
+        } catch (error) {
+          showToast(error.message || 'Unable to load stock details.', 'error');
+        }
+      }
+
+      function renderStockHeader(stock) {
+        document.getElementById('stockSymbol').textContent = stock.symbol;
+        document.getElementById('stockCompanyName').textContent = stock.companyName;
+        document.getElementById('stockSectorBadge').textContent = stock.sector || 'NSE Equity';
+        document.getElementById('stockPrice').textContent = formatCurrency(stock.price);
+
+        const pos = Number(stock.changePercent) >= 0;
+        const changeAmt = (stock.price * (stock.changePercent / 100));
+
+        const amtEl = document.getElementById('stockDayAmt');
+        amtEl.textContent = `${pos ? '+' : ''}${formatCurrency(changeAmt)}`;
+        amtEl.style.color = pos ? 'var(--color-gain)' : 'var(--color-loss)';
+
+        const chipEl = document.getElementById('stockChangeChip');
+        chipEl.className = `stock-chip ${pos ? 'positive' : 'negative'}`;
+        chipEl.textContent = `${pos ? '+' : ''}${Number(stock.changePercent).toFixed(2)}%`;
+      }
+
+      function renderStockStats(stock) {
+        const curPrice = stock.price;
+        const dayLow = curPrice * 0.985;
+        const dayHigh = curPrice * 1.018;
+        const yearLow = curPrice * 0.78;
+        const yearHigh = curPrice * 1.28;
+
+        document.getElementById('dayLowVal').textContent = formatCurrency(dayLow);
+        document.getElementById('dayHighVal').textContent = formatCurrency(dayHigh);
+        document.getElementById('yearLowVal').textContent = formatCurrency(yearLow);
+        document.getElementById('yearHighVal').textContent = formatCurrency(yearHigh);
+
+        // Position markers on range bars
+        const dayPct = Math.max(0, Math.min(100, ((curPrice - dayLow) / (dayHigh - dayLow)) * 100));
+        document.getElementById('dayRangeMarker').style.left = `${dayPct}%`;
+        document.getElementById('dayRangeFill').style.width = `${dayPct}%`;
+
+        const yearPct = Math.max(0, Math.min(100, ((curPrice - yearLow) / (yearHigh - yearLow)) * 100));
+        document.getElementById('yearRangeMarker').style.left = `${yearPct}%`;
+        document.getElementById('yearRangeFill').style.width = `${yearPct}%`;
+
+        document.getElementById('statPrevClose').textContent = formatCurrency(curPrice * (1 - (stock.changePercent / 100)));
+        document.getElementById('statOpen').textContent = formatCurrency(dayLow * 1.004);
+        document.getElementById('statVolume').textContent = (Math.round(curPrice * 342)).toLocaleString('en-IN');
+        document.getElementById('statAvgVol').textContent = (Math.round(curPrice * 310)).toLocaleString('en-IN');
+        document.getElementById('statSector').textContent = stock.sector || 'General';
+      }
+
+      function renderUserPosition(holding, stock) {
+        const panel = document.getElementById('userPositionPanel');
+        if (!isLoggedIn()) {
+          panel.style.display = 'none';
+          return;
+        }
+
+        panel.style.display = 'block';
+        if (!holding || holding.quantity <= 0) {
+          document.getElementById('posStatusChip').className = 'stock-chip';
+          document.getElementById('posStatusChip').textContent = 'No Open Position';
+          document.getElementById('posShares').textContent = '0';
+          document.getElementById('posAvgPrice').textContent = '₹0.00';
+          document.getElementById('posCurValue').textContent = '₹0.00';
+          document.getElementById('posPnl').textContent = '₹0.00 (0.00%)';
+          document.getElementById('posPnl').style.color = 'var(--color-ink)';
+          return;
+        }
+
+        const qty = holding.quantity;
+        const avg = holding.averagePrice || stock.price;
+        const curVal = qty * stock.price;
+        const pnl = curVal - (qty * avg);
+        const pnlPct = avg > 0 ? (pnl / (qty * avg)) * 100 : 0;
+        const pos = pnl >= 0;
+
+        document.getElementById('posStatusChip').className = `stock-chip ${pos ? 'positive' : 'negative'}`;
+        document.getElementById('posStatusChip').textContent = `${qty} Shares Active`;
+        document.getElementById('posShares').textContent = qty.toString();
+        document.getElementById('posAvgPrice').textContent = formatCurrency(avg);
+        document.getElementById('posCurValue').textContent = formatCurrency(curVal);
+
+        const pnlEl = document.getElementById('posPnl');
+        pnlEl.textContent = `${pos ? '+' : ''}${formatCurrency(pnl)} (${pos ? '+' : ''}${pnlPct.toFixed(2)}%)`;
+        pnlEl.style.color = pos ? 'var(--color-gain)' : 'var(--color-loss)';
+      }
+
+      // ----------------------------------------------------------------------
+      // Technical Charting (TradingView Lightweight Charts via CDN)
+      // ----------------------------------------------------------------------
+      async function initTechnicalChart(symbol) {
+        const container = document.getElementById('tvChartMount');
+        const skeleton = document.getElementById('tvSkeleton');
+        container.innerHTML = '';
+        skeleton.style.display = 'block';
+
+        try {
+          const history = await apiGet(`/api/stocks/${encodeURIComponent(symbol)}/history?range=${currentRange}`)
+            .catch(() => apiGet(`/api/stocks/${encodeURIComponent(symbol)}/candles?range=${currentRange}`))
+            .catch(() => null);
+
+          candleDataCache = (Array.isArray(history) && history.length)
+            ? history
+            : (history?.candles || generateSyntheticCandles(currentStock?.price || 1000));
+          skeleton.style.display = 'none';
+
+          const isDark = document.body.classList.contains('dark');
+          const chartOptions = {
+            width: container.clientWidth,
+            height: 480,
+            layout: {
+              background: { color: 'transparent' },
+              textColor: isDark ? '#94A3B0' : '#5C676E',
+              fontFamily: 'Instrument Sans'
+            },
+            grid: {
+              vertLines: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' },
+              horzLines: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }
+            },
+            crosshair: {
+              mode: LightweightCharts.CrosshairMode.Normal,
+            },
+            timeScale: {
+              borderColor: isDark ? '#28343E' : '#DDE2E5',
+              timeVisible: true,
+              secondsVisible: false,
+            },
+            rightPriceScale: {
+              borderColor: isDark ? '#28343E' : '#DDE2E5',
+            }
+          };
+
+          tvChart = LightweightCharts.createChart(container, chartOptions);
+
+          // Volume series histogram
+          volumeSeries = tvChart.addHistogramSeries({
+            color: '#2150D6',
+            priceFormat: { type: 'volume' },
+            priceScaleId: '',
+            scaleMargins: { top: 0.8, bottom: 0 },
+          });
+
+          // Candlestick series
+          candleSeries = tvChart.addCandlestickSeries({
+            upColor: '#0E9F6E',
+            downColor: '#D6393A',
+            borderUpColor: '#0E9F6E',
+            borderDownColor: '#D6393A',
+            wickUpColor: '#0E9F6E',
+            wickDownColor: '#D6393A',
+          });
+
+          // Line series
+          lineSeries = tvChart.addLineSeries({
+            color: '#2150D6',
+            lineWidth: 2,
+            visible: false,
+          });
+
+          // Area series
+          areaSeries = tvChart.addAreaSeries({
+            topColor: 'rgba(33, 80, 214, 0.4)',
+            bottomColor: 'rgba(33, 80, 214, 0.0)',
+            lineColor: '#2150D6',
+            lineWidth: 2,
+            visible: false,
+          });
+
+          // Moving Averages
+          ma20Series = tvChart.addLineSeries({
+            color: '#F59E0B',
+            lineWidth: 1.5,
+            visible: showMa20,
+          });
+
+          ma50Series = tvChart.addLineSeries({
+            color: '#3B82F6',
+            lineWidth: 1.5,
+            visible: showMa50,
+          });
+
+          updateSeriesData();
+          setupCrosshairHUD();
+
+          window.addEventListener('resize', () => {
+            if (tvChart && container) tvChart.resize(container.clientWidth, 480);
+          });
+
+        } catch (e) {
+          skeleton.style.display = 'none';
+        }
+      }
+
+      function updateSeriesData() {
+        if (!tvChart || !candleDataCache.length) return;
+
+        candleSeries.setData(candleDataCache);
+        lineSeries.setData(candleDataCache.map(c => ({ time: c.time, value: c.close })));
+        areaSeries.setData(candleDataCache.map(c => ({ time: c.time, value: c.close })));
+
+        volumeSeries.setData(candleDataCache.map(c => ({
+          time: c.time,
+          value: c.volume || Math.round(c.close * 12),
+          color: c.close >= c.open ? 'rgba(14, 159, 110, 0.35)' : 'rgba(214, 57, 58, 0.35)'
+        })));
+
+        // Calculate MA20 and MA50
+        const ma20Data = calculateSMA(candleDataCache, 20);
+        const ma50Data = calculateSMA(candleDataCache, 50);
+        ma20Series.setData(ma20Data);
+        ma50Series.setData(ma50Data);
+
+        tvChart.timeScale().fitContent();
+      }
+
+      function calculateSMA(data, period) {
+        const result = [];
+        for (let i = 0; i < data.length; i++) {
+          if (i < period - 1) continue;
+          let sum = 0;
+          for (let j = 0; j < period; j++) {
+            sum += data[i - j].close;
+          }
+          result.push({ time: data[i].time, value: sum / period });
+        }
+        return result;
+      }
+
+      function generateSyntheticCandles(basePrice) {
+        const list = [];
+        const count = 40;
+        let cur = basePrice * 0.94;
+        const now = Math.floor(Date.now() / 1000);
+
+        for (let i = count; i >= 0; i--) {
+          const time = now - (i * 86400);
+          const change = (Math.random() - 0.48) * (cur * 0.02);
+          const open = cur;
+          const close = cur + change;
+          const high = Math.max(open, close) + Math.random() * (cur * 0.008);
+          const low = Math.min(open, close) - Math.random() * (cur * 0.008);
+          cur = close;
+          list.push({ time, open, high, low, close, volume: Math.round(cur * 15) });
+        }
+        return list;
+      }
+
+      function setupCrosshairHUD() {
+        tvChart.subscribeCrosshairMove(param => {
+          if (!param || !param.time || !param.seriesData) return;
+          const data = param.seriesData.get(candleSeries) || param.seriesData.get(lineSeries);
+          if (!data) return;
+
+          document.getElementById('hudTime').textContent = new Date(param.time * 1000).toLocaleDateString('en-IN');
+          document.getElementById('hudOpen').textContent = formatCurrency(data.open || data.value);
+          document.getElementById('hudHigh').textContent = formatCurrency(data.high || data.value);
+          document.getElementById('hudLow').textContent = formatCurrency(data.low || data.value);
+          document.getElementById('hudClose').textContent = formatCurrency(data.close || data.value);
+
+          const volData = param.seriesData.get(volumeSeries);
+          document.getElementById('hudVol').textContent = volData ? volData.value.toLocaleString('en-IN') : '--';
+
+          const chgPct = data.open ? (((data.close - data.open) / data.open) * 100).toFixed(2) + '%' : '--';
+          document.getElementById('hudChg').textContent = chgPct;
+        });
+      }
+
+      function updateChartTheme() {
+        if (!tvChart) return;
+        const isDark = document.body.classList.contains('dark');
+        tvChart.applyOptions({
+          layout: { textColor: isDark ? '#94A3B0' : '#5C676E' },
+          grid: {
+            vertLines: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' },
+            horzLines: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }
+          },
+          timeScale: { borderColor: isDark ? '#28343E' : '#DDE2E5' },
+          rightPriceScale: { borderColor: isDark ? '#28343E' : '#DDE2E5' },
+        });
+      }
+
+      function setupChartControls() {
+        // Chart Type Switcher
+        document.querySelectorAll('#chartTypeGroup .chart-ctrl-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('#chartTypeGroup .chart-ctrl-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentChartType = btn.dataset.type;
+
+            candleSeries.applyOptions({ visible: currentChartType === 'candles' });
+            lineSeries.applyOptions({ visible: currentChartType === 'line' });
+            areaSeries.applyOptions({ visible: currentChartType === 'area' });
+          });
+        });
+
+        // Time Range Switcher
+        document.querySelectorAll('#rangeGroup .chart-ctrl-btn').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            document.querySelectorAll('#rangeGroup .chart-ctrl-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentRange = btn.dataset.range;
+            if (currentStock) {
+              await initTechnicalChart(currentStock.symbol);
+            }
+          });
+        });
+
+        // MA Overlays
+        const ma20Btn = document.getElementById('toggleMa20');
+        ma20Btn.addEventListener('click', () => {
+          showMa20 = !showMa20;
+          ma20Btn.setAttribute('aria-pressed', showMa20);
+          ma20Series?.applyOptions({ visible: showMa20 });
+        });
+
+        const ma50Btn = document.getElementById('toggleMa50');
+        ma50Btn.addEventListener('click', () => {
+          showMa50 = !showMa50;
+          ma50Btn.setAttribute('aria-pressed', showMa50);
+          ma50Series?.applyOptions({ visible: showMa50 });
+        });
+      }
+
+      // ----------------------------------------------------------------------
+      // Sticky Order Ticket Logic
+      // ----------------------------------------------------------------------
+      function setupTicketEvents() {
+        const buyBtn = document.getElementById('ticketBuyBtn');
+        const sellBtn = document.getElementById('ticketSellBtn');
+        const qtyInput = document.getElementById('ticketQty');
+        const submitBtn = document.getElementById('ticketSubmitBtn');
+
+        buyBtn.addEventListener('click', () => {
+          ticketAction = 'buy';
+          buyBtn.className = 'switch-btn active-buy';
+          sellBtn.className = 'switch-btn';
+          submitBtn.style.backgroundColor = 'var(--color-gain)';
+          updateTicketState();
+        });
+
+        sellBtn.addEventListener('click', () => {
+          ticketAction = 'sell';
+          buyBtn.className = 'switch-btn';
+          sellBtn.className = 'switch-btn active-sell';
+          submitBtn.style.backgroundColor = 'var(--color-loss)';
+          updateTicketState();
+        });
+
+        document.querySelectorAll('.qty-pill').forEach(p => {
+          p.addEventListener('click', () => {
+            const add = Number(p.dataset.add || 1);
+            qtyInput.value = Number(qtyInput.value || 1) + add;
+            updateTicketState();
+          });
+        });
+
+        qtyInput.addEventListener('input', updateTicketState);
+
+        submitBtn.addEventListener('click', async () => {
+          if (!isLoggedIn()) {
+            showToast('Please sign in to place orders.', 'info');
+            setTimeout(() => { window.location.href = 'login.html'; }, 500);
+            return;
+          }
+
+          const qty = parseInt(qtyInput.value || 1, 10);
+          if (!currentStock || qty <= 0) return;
+
+          try {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Executing...';
+            const endpoint = ticketAction === 'buy' ? '/api/trade/buy' : '/api/trade/sell';
+            const res = await apiPost(endpoint, {
+              stockId: currentStock.id,
+              quantity: qty
+            });
+
+            showToast(`Order executed: ${ticketAction.toUpperCase()} ${qty} ${currentStock.symbol}`, 'success');
+
+            // Refresh user holdings and balance
+            if (res && res.newBalance !== undefined) {
+              userBalance = res.newBalance;
+              const u = getStoredUser() || {};
+              u.balance = res.newBalance;
+              localStorage.setItem('equitrade_user', JSON.stringify(u));
+              document.querySelector('.user-balance').textContent = formatCurrency(res.newBalance);
+            }
+
+            // Reload position and ticket state
+            const updatedHoldings = await apiGet('/api/portfolio/holdings').catch(() => []);
+            userHoldings = updatedHoldings;
+            const updatedHolding = userHoldings.find(h => h.stockSymbol === currentStock.symbol);
+            currentHoldingQty = updatedHolding ? updatedHolding.quantity : 0;
+            renderUserPosition(updatedHolding, currentStock);
+            updateTicketState();
+
+          } catch (e) {
+            showToast(e.message || 'Trade execution failed.', 'error');
+          } finally {
+            submitBtn.disabled = false;
+          }
+        });
+      }
+
+      function updateTicketState() {
+        if (!currentStock) return;
+        const qty = Math.max(1, parseInt(document.getElementById('ticketQty').value || 1, 10));
+        const total = qty * currentStock.price;
+        const isBuy = ticketAction === 'buy';
+
+        document.getElementById('ticketPriceDisplay').textContent = formatCurrency(currentStock.price);
+        document.getElementById('ticketCashDisplay').textContent = formatCurrency(userBalance);
+        document.getElementById('ticketHoldingLabel').textContent = `Holding: ${currentHoldingQty}`;
+        document.getElementById('ticketTotalDisplay').textContent = formatCurrency(total);
+
+        const submitBtn = document.getElementById('ticketSubmitBtn');
+        submitBtn.textContent = `${isBuy ? 'Place Buy Order' : 'Place Sell Order'} (${qty} ${currentStock.symbol})`;
+
+        const alertBox = document.getElementById('ticketAlert');
+        alertBox.style.display = 'none';
+        submitBtn.disabled = false;
+
+        if (isBuy && total > userBalance) {
+          alertBox.style.display = 'block';
+          alertBox.style.backgroundColor = 'var(--color-loss-subtle)';
+          alertBox.style.color = 'var(--color-loss)';
+          alertBox.style.border = '1px solid var(--color-loss-border)';
+          alertBox.textContent = `Insufficient practice cash. Short by ${formatCurrency(total - userBalance)}.`;
+          submitBtn.disabled = true;
+        } else if (!isBuy && qty > currentHoldingQty) {
+          alertBox.style.display = 'block';
+          alertBox.style.backgroundColor = 'var(--color-loss-subtle)';
+          alertBox.style.color = 'var(--color-loss)';
+          alertBox.style.border = '1px solid var(--color-loss-border)';
+          alertBox.textContent = `You only own ${currentHoldingQty} shares of ${currentStock.symbol}.`;
+          submitBtn.disabled = true;
+        }
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard | EquiTrade</title>
+    <meta name="description" content="Administrative control center for managing stock listings, market telemetry and system statistics." />
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <script src="js/api.js" defer></script>
+    <script src="js/auth.js" defer></script>
+    <script src="js/ui.js" defer></script>
+    <script src="js/components.js" defer></script>
+  </head>
+  <body data-page="admin">
+    <main class="page-shell">
+      <div class="container">
+        <!-- Section Header -->
+        <section class="section" style="padding-bottom: 8px;">
+          <div class="section-header">
+            <div>
+              <div class="eyebrow" style="color:var(--danger); font-weight:700;">Privileged Console</div>
+              <h2 style="margin-top:4px;">Administrator Control Center</h2>
+              <div class="section-subtitle">System telemetry, stock inventory management, and trading floor analytics.</div>
+            </div>
+          </div>
+
+          <!-- Dashboard Summary Metrics -->
+          <div class="summary-grid" id="adminSummaryGrid">
+            <div class="summary-card glass skeleton skeleton-card"></div>
+            <div class="summary-card glass skeleton skeleton-card"></div>
+            <div class="summary-card glass skeleton skeleton-card"></div>
+            <div class="summary-card glass skeleton skeleton-card"></div>
+          </div>
+        </section>
+
+        <!-- Stock Management Form & Top Traded Stocks -->
+        <section class="section portfolio-grid">
+          <!-- Stock Add/Edit Form -->
+          <div class="panel-card glass" style="padding: 24px;">
+            <div class="section-header" style="margin-bottom: 16px;">
+              <div>
+                <h3 style="margin:0; font-size:1.25rem;" id="formTitle">Add New Security</h3>
+                <div class="section-subtitle" style="margin-top:4px;">Register a new equity listing or edit an existing ticker.</div>
+              </div>
+            </div>
+
+            <form id="stockManagementForm" class="form-card">
+              <input type="hidden" id="stockIdHidden" />
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="adminStockSymbol">Ticker Symbol</label>
+                  <input id="adminStockSymbol" class="text-input" type="text" placeholder="e.g. ZOMATO" required style="text-transform: uppercase;" />
+                </div>
+                <div class="form-group">
+                  <label for="adminStockCompany">Company Name</label>
+                  <input id="adminStockCompany" class="text-input" type="text" placeholder="e.g. Zomato Limited" required />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="adminStockPrice">Initial Price (₹)</label>
+                  <input id="adminStockPrice" class="text-input" type="number" step="0.05" min="1" placeholder="245.50" required />
+                </div>
+                <div class="form-group">
+                  <label for="adminStockChange">Day Change %</label>
+                  <input id="adminStockChange" class="text-input" type="number" step="0.01" placeholder="1.25" required />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="adminStockSector">Market Sector</label>
+                <input id="adminStockSector" class="text-input" type="text" placeholder="e.g. Technology, Consumer, Banking" required />
+              </div>
+
+              <div class="link-row" style="margin-top: 14px; gap: 10px;">
+                <button class="btn btn-primary" type="submit" id="saveStockBtn" style="flex: 2;">
+                  Add Security Listing
+                </button>
+                <button class="btn btn-ghost" type="button" id="cancelEditBtn" style="flex: 1; display: none;">
+                  Cancel Edit
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Top Traded Stocks Preview -->
+          <div class="panel-card glass" style="padding: 24px;">
+            <div class="section-header" style="margin-bottom: 16px;">
+              <h3 style="margin:0; font-size:1.25rem;">Most Traded Securities</h3>
+            </div>
+            <div id="topTradedList" class="mini-grid">
+              <div class="skeleton skeleton-card" style="height: 90px;"></div>
+              <div class="skeleton skeleton-card" style="height: 90px;"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Stock Inventory Table -->
+        <section class="section panel-card glass" style="padding: 24px;">
+          <div class="section-header" style="margin-bottom: 16px;">
+            <div>
+              <h3 style="margin:0; font-size:1.25rem;">Market Inventory Catalog</h3>
+              <div class="section-subtitle">Manage all pre-loaded and live market listings.</div>
+            </div>
+            <div style="font-size:0.88rem; color:var(--muted);" id="stockCountBadge"></div>
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Symbol</th>
+                  <th>Company Name</th>
+                  <th>Price</th>
+                  <th>Day Change</th>
+                  <th>Sector</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="adminStockTableBody">
+                <tr><td colspan="6"><div class="skeleton skeleton-text" style="height:32px;"></div></td></tr>
+                <tr><td colspan="6"><div class="skeleton skeleton-text" style="height:32px;"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal-backdrop">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 style="margin:0; font-size:1.25rem; color:var(--danger);">Confirm Security Deletion</h3>
+          <button class="btn btn-ghost" type="button" data-close-modal style="font-size:1.2rem; padding:4px 8px;">✕</button>
+        </div>
+        <div class="modal-body" style="padding: 16px 0;">
+          <p id="deleteModalMessage" style="font-size:1rem; line-height: 1.6; margin:0;">
+            Are you sure you want to delete this stock? This will purge historical prices and associated orders.
+          </p>
+        </div>
+        <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:12px;">
+          <button class="btn btn-ghost" type="button" data-close-modal>Cancel</button>
+          <button class="btn btn-danger" id="confirmDeleteBtn" type="button">Delete Listing</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let stockListCache = [];
+      let targetStockToDelete = null;
+
+      async function initializeAdminDashboard() {
+        if (!protectAdminPage()) return;
+
+        try {
+          showPageLoader();
+          const [dashboard, stocks] = await Promise.all([
+            apiGet('/api/admin/dashboard'),
+            apiGet('/api/admin/stocks')
+          ]);
+
+          stockListCache = stocks || [];
+
+          // Render Metric Cards
+          document.getElementById('adminSummaryGrid').innerHTML = `
+            <div class="summary-card glass">
+              <div class="label">Total Platform Users</div>
+              <div class="value">${dashboard.totalUsers || 0}</div>
+            </div>
+            <div class="summary-card glass">
+              <div class="label">Total Orders Executed</div>
+              <div class="value" style="color:var(--primary);">${dashboard.totalTrades || 0}</div>
+            </div>
+            <div class="summary-card glass">
+              <div class="label">Active Securities</div>
+              <div class="value">${dashboard.totalStocks || 0}</div>
+            </div>
+            <div class="summary-card glass">
+              <div class="label">Simulated Turnover</div>
+              <div class="value" style="color:var(--success);">${formatCurrency(dashboard.totalTradeVolume || 0)}</div>
+            </div>
+          `;
+
+          // Render Most Traded List
+          const mostTraded = dashboard.mostTradedStocks || [];
+          document.getElementById('topTradedList').innerHTML = mostTraded.length ? mostTraded.slice(0, 4).map(item => `
+            <div class="panel-card" style="padding: 14px; background: var(--panel-soft);">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <div>
+                  <strong style="font-size:1.05rem;">${item.symbol}</strong>
+                  <div style="color:var(--muted); font-size:0.8rem; margin-top:2px;">${item.companyName}</div>
+                </div>
+                <span class="stock-chip positive" style="font-weight:700;">${item.tradeCount} trade(s)</span>
+              </div>
+            </div>
+          `).join('') : '<div class="empty-state">No transaction history recorded yet.</div>';
+
+          // Render Stock Table
+          renderAdminStockTable(stockListCache);
+
+        } catch (error) {
+          showToast(error.message || 'Unable to load administrator data.', 'error');
+        } finally {
+          hidePageLoader();
+        }
+      }
+
+      function renderAdminStockTable(stocks) {
+        document.getElementById('stockCountBadge').textContent = `Total: ${stocks.length} listings`;
+        const tbody = document.getElementById('adminStockTableBody');
+
+        if (!stocks.length) {
+          tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state">No stock listings registered.</div></td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = stocks.map(s => {
+          const pos = Number(s.changePercent) >= 0;
+          return `
+            <tr>
+              <td><strong style="font-size:1.05rem;">${s.symbol}</strong></td>
+              <td>${s.companyName}</td>
+              <td style="font-weight:700;">${formatCurrency(s.price)}</td>
+              <td class="${pos ? 'trend-up' : 'trend-down'}" style="font-weight:700;">
+                ${pos ? '+' : ''}${Number(s.changePercent || 0).toFixed(2)}%
+              </td>
+              <td><span class="badge" style="background:var(--panel-soft);">${s.sector || 'General'}</span></td>
+              <td>
+                <div class="link-row" style="gap:8px;">
+                  <button class="btn btn-secondary" type="button" data-edit-stock-id="${s.id}" style="padding:4px 10px; font-size:0.82rem;">Edit</button>
+                  <button class="btn btn-danger" type="button" data-delete-stock-id="${s.id}" style="padding:4px 10px; font-size:0.82rem;">Delete</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        // Attach edit listeners
+        tbody.querySelectorAll('[data-edit-stock-id]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const id = Number(btn.dataset.editStockId);
+            const stock = stockListCache.find(item => item.id === id);
+            if (!stock) return;
+
+            document.getElementById('stockIdHidden').value = stock.id;
+            document.getElementById('adminStockSymbol').value = stock.symbol;
+            document.getElementById('adminStockCompany').value = stock.companyName;
+            document.getElementById('adminStockPrice').value = stock.price;
+            document.getElementById('adminStockChange').value = stock.changePercent;
+            document.getElementById('adminStockSector').value = stock.sector || 'General';
+
+            document.getElementById('formTitle').textContent = `Edit Security: ${stock.symbol}`;
+            document.getElementById('saveStockBtn').textContent = 'Update Listing';
+            document.getElementById('cancelEditBtn').style.display = 'inline-block';
+
+            window.scrollTo({ top: 200, behavior: 'smooth' });
+          });
+        });
+
+        // Attach delete listeners
+        tbody.querySelectorAll('[data-delete-stock-id]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const id = Number(btn.dataset.deleteStockId);
+            const stock = stockListCache.find(item => item.id === id);
+            if (!stock) return;
+
+            targetStockToDelete = stock;
+            document.getElementById('deleteModalMessage').innerHTML = `
+              Are you sure you want to permanently remove <strong>${stock.symbol}</strong> (${stock.companyName})? This will delete all associated portfolio holdings and transactions.
+            `;
+            openModal('deleteModal');
+          });
+        });
+      }
+
+      function resetStockForm() {
+        document.getElementById('stockManagementForm').reset();
+        document.getElementById('stockIdHidden').value = '';
+        document.getElementById('formTitle').textContent = 'Add New Security';
+        document.getElementById('saveStockBtn').textContent = 'Add Security Listing';
+        document.getElementById('cancelEditBtn').style.display = 'none';
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        initializeAdminDashboard();
+
+        document.getElementById('cancelEditBtn')?.addEventListener('click', resetStockForm);
+
+        // Form Submit Handler (Add or Update)
+        document.getElementById('stockManagementForm')?.addEventListener('submit', async (e) => {
+          e.preventDefault();
+
+          const id = document.getElementById('stockIdHidden').value;
+          const payload = {
+            symbol: document.getElementById('adminStockSymbol').value.trim().toUpperCase(),
+            companyName: document.getElementById('adminStockCompany').value.trim(),
+            price: parseFloat(document.getElementById('adminStockPrice').value),
+            changePercent: parseFloat(document.getElementById('adminStockChange').value),
+            sector: document.getElementById('adminStockSector').value.trim()
+          };
+
+          try {
+            showPageLoader();
+            if (id) {
+              await apiPut(`/api/admin/stocks/${id}`, payload, { requireAuth: true });
+              showToast(`Security ${payload.symbol} updated successfully.`, 'success');
+            } else {
+              await apiPost('/api/admin/stocks', payload, { requireAuth: true });
+              showToast(`Security ${payload.symbol} listed successfully.`, 'success');
+            }
+            resetStockForm();
+            await initializeAdminDashboard();
+          } catch (err) {
+            showToast(err.message || 'Failed to save security listing.', 'error');
+          } finally {
+            hidePageLoader();
+          }
+        });
+
+        // Confirm Delete Handler
+        document.getElementById('confirmDeleteBtn')?.addEventListener('click', async () => {
+          if (!targetStockToDelete) return;
+          try {
+            showPageLoader();
+            await apiDelete(`/api/admin/stocks/${targetStockToDelete.id}`, { requireAuth: true });
+            closeModal('deleteModal');
+            showToast(`Security ${targetStockToDelete.symbol} removed successfully.`, 'success');
+            targetStockToDelete = null;
+            await initializeAdminDashboard();
+          } catch (err) {
+            showToast(err.message || 'Failed to delete security.', 'error');
+          } finally {
+            hidePageLoader();
+          }
+        });
+
+        bindModalClose('deleteModal');
+      });
+    </script>
+  </body>
+</html>

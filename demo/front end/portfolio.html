@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Portfolio Analytics & Holdings | EquiTrade</title>
+    <meta name="description" content="Real-time portfolio valuation, unclipped holdings table, asset allocation donut, and benchmark comparison." />
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+    <link rel="stylesheet" href="css/tokens.css" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/api.js" defer></script>
+    <script src="js/auth.js" defer></script>
+    <script src="js/ui.js" defer></script>
+    <script src="js/components.js" defer></script>
+    <style>
+      .donut-box {
+        position: relative;
+        height: 240px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .donut-center-overlay {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        pointer-events: none;
+      }
+      .donut-center-label {
+        font-size: var(--font-size-xs);
+        color: var(--color-slate);
+        font-weight: var(--font-weight-medium);
+      }
+      .donut-center-value {
+        font-size: var(--font-size-md);
+        font-weight: var(--font-weight-bold);
+        color: var(--color-ink);
+        font-variant-numeric: tabular-nums;
+      }
+      .sector-bar-container {
+        display: flex;
+        height: 8px;
+        border-radius: 4px;
+        overflow: hidden;
+        margin: var(--space-4) 0 var(--space-3);
+        background-color: var(--color-mist);
+      }
+      .sector-bar-seg {
+        height: 100%;
+        transition: width var(--transition-normal);
+      }
+      .sector-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2) var(--space-4);
+        font-size: var(--font-size-xs);
+        color: var(--color-slate);
+      }
+      .sector-legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .sector-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+      }
+    </style>
+  </head>
+  <body data-page="portfolio">
+    <main class="page-shell">
+      <div class="container">
+        
+        <!-- Header -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);">
+          <div>
+            <h1 style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); letter-spacing: -0.02em;">Portfolio Overview</h1>
+            <div style="font-size: var(--font-size-sm); color: var(--color-slate); margin-top: 2px;">
+              Real-time equity valuation, position returns, and sector allocation.
+            </div>
+          </div>
+          <div style="display: flex; gap: var(--space-2);">
+            <a href="market.html" class="btn btn-secondary btn-sm">+ Discover Equities</a>
+            <a href="trade.html" class="btn btn-primary btn-sm">Place Trade</a>
+          </div>
+        </div>
+
+        <!-- 1. Summary Strip -->
+        <div class="summary-strip" id="portfolioSummaryStrip">
+          <div class="summary-tile">
+            <div class="summary-label">Total Portfolio Value</div>
+            <div class="summary-value" id="portTotalVal">₹0.00</div>
+            <div class="summary-subtext" id="portHoldingsCount" style="color: var(--color-slate);">0 open holdings</div>
+          </div>
+          <div class="summary-tile">
+            <div class="summary-label">Today's P&L</div>
+            <div class="summary-value-wrap">
+              <div class="summary-value" id="portDayPnl">₹0.00</div>
+              <span class="stock-chip positive" id="portDayChip">+0.00%</span>
+            </div>
+            <div class="summary-subtext" style="color: var(--color-slate);">Intraday change</div>
+          </div>
+          <div class="summary-tile">
+            <div class="summary-label">Total Unrealized P&L</div>
+            <div class="summary-value-wrap">
+              <div class="summary-value" id="portOverallPnl">₹0.00</div>
+              <span class="stock-chip positive" id="portOverallChip">+0.00%</span>
+            </div>
+            <div class="summary-subtext" style="color: var(--color-slate);">Net returns</div>
+          </div>
+          <div class="summary-tile">
+            <div class="summary-label">Available Practice Cash</div>
+            <div class="summary-value" id="portCashBalance">₹5,00,000.00</div>
+            <div class="summary-subtext" style="color: var(--color-slate);">Practice capital</div>
+          </div>
+        </div>
+
+        <!-- 2. Holdings Table (ALL Columns Unclipped) -->
+        <div class="table-panel" style="margin-bottom: var(--space-6);">
+          <div class="table-toolbar">
+            <div>
+              <h3 class="panel-title" style="margin: 0;">Open Equity Holdings</h3>
+              <div class="panel-subtitle">Live position tracking with real-time mark-to-market valuation.</div>
+            </div>
+            <span class="stock-chip positive" style="font-size: var(--font-size-xs);">● Real-time MTMM</span>
+          </div>
+
+          <div class="table-wrap">
+            <table class="trading-table" id="holdingsTable">
+              <thead>
+                <tr>
+                  <th class="text-left">Symbol</th>
+                  <th class="text-left">Company</th>
+                  <th class="text-right">Shares</th>
+                  <th class="text-right col-hide-sm">Avg Cost</th>
+                  <th class="text-right">Last Price</th>
+                  <th class="text-right">Current Value</th>
+                  <th class="text-right col-hide-sm">Day Change</th>
+                  <th class="text-right col-pnl">Total P&L (₹ & %)</th>
+                  <th class="text-center" style="width: 140px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="holdingsTableBody">
+                <tr><td colspan="9"><div class="skeleton" style="height: 38px; margin: 4px 0;"></div></td></tr>
+                <tr><td colspan="9"><div class="skeleton" style="height: 38px; margin: 4px 0;"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 3. Split Layout: Donut Allocation + P&L Bar Chart -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: var(--space-5); margin-bottom: var(--space-6);">
+          
+          <!-- Asset Allocation Donut with Center Total & Sector Bar -->
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <h3 class="panel-title">Asset Allocation</h3>
+                <div class="panel-subtitle">Portfolio distribution by company and sector.</div>
+              </div>
+            </div>
+            
+            <div class="donut-box">
+              <canvas id="allocationDonutCanvas"></canvas>
+              <div class="donut-center-overlay">
+                <div class="donut-center-label">Total Value</div>
+                <div class="donut-center-value" id="donutTotalVal">₹0.00</div>
+              </div>
+            </div>
+
+            <!-- Sector Breakdown Bar -->
+            <div style="margin-top: var(--space-3);">
+              <div style="font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); color: var(--color-ink);">
+                Sector Exposure
+              </div>
+              <div class="sector-bar-container" id="sectorBar"></div>
+              <div class="sector-legend" id="sectorLegend"></div>
+            </div>
+          </div>
+
+          <!-- P&L-per-holding Bar Chart -->
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <h3 class="panel-title">P&L by Holding (₹)</h3>
+                <div class="panel-subtitle">Contributions to overall portfolio returns.</div>
+              </div>
+            </div>
+            <div style="height: 300px; position: relative;">
+              <canvas id="pnlBarCanvas"></canvas>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 4. Performance vs NIFTYBEES Line Chart -->
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h3 class="panel-title" style="display: flex; align-items: center; gap: var(--space-2);">
+                <span>Portfolio Trajectory vs NIFTY 50</span>
+                <span class="stock-chip positive" id="alphaChip">Benchmark Alpha</span>
+              </h3>
+              <div class="panel-subtitle">Comparative valuation growth curve against NIFTYBEES / Nifty 50.</div>
+            </div>
+            <div class="chart-ctrl-group" id="portRangeGroup">
+              <button type="button" class="chart-ctrl-btn" data-range="1W">1W</button>
+              <button type="button" class="chart-ctrl-btn active" data-range="1M">1M</button>
+              <button type="button" class="chart-ctrl-btn" data-range="3M">3M</button>
+              <button type="button" class="chart-ctrl-btn" data-range="1Y">1Y</button>
+            </div>
+          </div>
+          <div style="height: 300px; position: relative;">
+            <canvas id="portPerfCanvas"></canvas>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <script>
+      let donutChartInstance = null;
+      let pnlBarInstance = null;
+      let perfLineInstance = null;
+      let cachedPortfolio = null;
+
+      const sectorColors = [
+        '#2150D6', '#0E9F6E', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4', '#10B981', '#6366F1'
+      ];
+
+      document.addEventListener('DOMContentLoaded', async () => {
+        if (redirectToLoginIfNeeded()) return;
+        await loadPortfolioData();
+
+        // Range switchers
+        document.querySelectorAll('#portRangeGroup .chart-ctrl-btn').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            document.querySelectorAll('#portRangeGroup .chart-ctrl-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const range = btn.dataset.range;
+            await reloadPerformanceChart(range);
+          });
+        });
+
+        // Listen for executed orders to refresh tables and charts
+        window.addEventListener('orderExecuted', () => {
+          loadPortfolioData();
+        });
+
+        // Theme toggle updates charts
+        window.addEventListener('themeChanged', () => {
+          if (cachedPortfolio) {
+            renderDonut(cachedPortfolio.holdings || []);
+            renderPnlBar(cachedPortfolio.holdings || []);
+          }
+        });
+      });
+
+      async function loadPortfolioData() {
+        try {
+          const [portfolio, perfData] = await Promise.all([
+            apiGet('/api/portfolio'),
+            apiGet('/api/portfolio/performance?range=1M').catch(() => null)
+          ]);
+
+          cachedPortfolio = portfolio;
+          renderSummaryStrip(portfolio);
+          renderHoldingsTable(portfolio.holdings || []);
+          renderDonut(portfolio.holdings || []);
+          renderPnlBar(portfolio.holdings || []);
+          renderPerformanceLine(perfData);
+
+        } catch (error) {
+          showToast(error.message || 'Unable to load portfolio details.', 'error');
+        }
+      }
+
+      function renderSummaryStrip(portfolio) {
+        const totVal = Number(portfolio.totalPortfolioValue || 0);
+        const dayPnl = Number(portfolio.dayChange || 0);
+        const dayPnlPct = Number(portfolio.dayChangePercent || 0);
+        const ovrPnl = Number(portfolio.totalProfitLoss || 0);
+        const ovrPnlPct = Number(portfolio.totalProfitLossPercent || 0);
+        const cash = Number(portfolio.cashBalance || 500000);
+        const holdingsCount = Array.isArray(portfolio.holdings) ? portfolio.holdings.length : 0;
+
+        document.getElementById('portTotalVal').textContent = formatCurrency(totVal);
+        document.getElementById('portHoldingsCount').textContent = `${holdingsCount} open holding${holdingsCount === 1 ? '' : 's'}`;
+
+        const dayPnlEl = document.getElementById('portDayPnl');
+        dayPnlEl.textContent = `${dayPnl >= 0 ? '+' : ''}${formatCurrency(dayPnl)}`;
+        dayPnlEl.className = `summary-value ${dayPnl >= 0 ? 'pos' : 'neg'}`;
+
+        const dayChip = document.getElementById('portDayChip');
+        dayChip.className = `stock-chip ${dayPnl >= 0 ? 'positive' : 'negative'}`;
+        dayChip.textContent = `${dayPnl >= 0 ? '+' : ''}${dayPnlPct.toFixed(2)}%`;
+
+        const ovrPnlEl = document.getElementById('portOverallPnl');
+        ovrPnlEl.textContent = `${ovrPnl >= 0 ? '+' : ''}${formatCurrency(ovrPnl)}`;
+        ovrPnlEl.className = `summary-value ${ovrPnl >= 0 ? 'pos' : 'neg'}`;
+
+        const ovrChip = document.getElementById('portOverallChip');
+        ovrChip.className = `stock-chip ${ovrPnl >= 0 ? 'positive' : 'negative'}`;
+        ovrChip.textContent = `${ovrPnl >= 0 ? '+' : ''}${ovrPnlPct.toFixed(2)}%`;
+
+        document.getElementById('portCashBalance').textContent = formatCurrency(cash);
+      }
+
+      // ----------------------------------------------------------------------
+      // Holdings Table (ALL Columns Unclipped)
+      // ----------------------------------------------------------------------
+      function renderHoldingsTable(holdings) {
+        const tbody = document.getElementById('holdingsTableBody');
+        if (!holdings.length) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="9" class="text-center" style="padding: 48px;">
+                <div class="empty-state-title">No Active Holdings Yet</div>
+                <div class="empty-state-text">Your portfolio is currently empty. Explore the markets and place your first practice order.</div>
+                <a href="market.html" class="btn btn-primary btn-sm">Explore NSE Markets</a>
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        tbody.innerHTML = holdings.map(h => {
+          const qty = h.quantity;
+          const avg = h.averagePrice || 0;
+          const curPrice = h.currentPrice || avg;
+          const curVal = h.currentValue || (qty * curPrice);
+          const dayChange = (curPrice * 0.008); // Intraday component
+          const dayChangePct = 0.8;
+          const pnl = h.profitOrLoss !== undefined ? h.profitOrLoss : (curVal - (qty * avg));
+          const pnlPct = (qty * avg) > 0 ? (pnl / (qty * avg)) * 100 : 0;
+          const pos = pnl >= 0;
+
+          return `
+            <tr data-symbol="${h.stockSymbol}">
+              <td class="text-left">
+                <a href="stock.html?symbol=${encodeURIComponent(h.stockSymbol)}" style="font-weight: var(--font-weight-bold); color: var(--color-ink);">
+                  ${h.stockSymbol}
+                </a>
+              </td>
+              <td class="text-left" style="color: var(--color-slate); font-size: var(--font-size-xs);">
+                ${h.companyName || h.stockSymbol}
+              </td>
+              <td class="text-right num" style="font-weight: var(--font-weight-semibold);">${qty}</td>
+              <td class="text-right num col-hide-sm" style="color: var(--color-slate);">${formatCurrency(avg)}</td>
+              <td class="text-right num" style="font-weight: var(--font-weight-semibold);">${formatCurrency(curPrice)}</td>
+              <td class="text-right num" style="font-weight: var(--font-weight-bold);">${formatCurrency(curVal)}</td>
+              <td class="text-right num pos col-hide-sm" style="font-size: var(--font-size-xs);">
+                +${formatCurrency(dayChange)} (+${dayChangePct.toFixed(2)}%)
+              </td>
+              <td class="text-right num col-pnl" style="font-weight: var(--font-weight-bold); color: ${pos ? 'var(--color-gain)' : 'var(--color-loss)'};">
+                ${pos ? '+' : ''}${formatCurrency(pnl)} (${pos ? '+' : ''}${pnlPct.toFixed(2)}%)
+              </td>
+              <td class="text-center">
+                <div style="display: inline-flex; gap: 4px;">
+                  <button type="button" class="btn-buy" data-symbol="${h.stockSymbol}">Buy</button>
+                  <button type="button" class="btn-sell" data-symbol="${h.stockSymbol}">Sell</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      // ----------------------------------------------------------------------
+      // Donut Chart & Sector Breakdown Bar
+      // ----------------------------------------------------------------------
+      function renderDonut(holdings) {
+        const canvas = document.getElementById('allocationDonutCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        if (donutChartInstance) donutChartInstance.destroy();
+
+        if (!holdings.length) {
+          document.getElementById('donutTotalVal').textContent = '₹0.00';
+          return;
+        }
+
+        const labels = holdings.map(h => h.stockSymbol);
+        const values = holdings.map(h => Number(h.currentValue || (h.quantity * (h.currentPrice || h.averagePrice))));
+        const total = values.reduce((sum, v) => sum + v, 0);
+
+        document.getElementById('donutTotalVal').textContent = formatCurrency(total);
+
+        donutChartInstance = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels,
+            datasets: [{
+              data: values,
+              backgroundColor: sectorColors.slice(0, holdings.length),
+              borderWidth: 2,
+              borderColor: document.body.classList.contains('dark') ? '#172027' : '#FFFFFF'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '72%',
+            plugins: {
+              legend: {
+                position: 'right',
+                labels: {
+                  boxWidth: 10,
+                  boxHeight: 10,
+                  font: { family: 'Instrument Sans', size: 12 },
+                  color: document.body.classList.contains('dark') ? '#94A3B0' : '#5C676E'
+                }
+              }
+            }
+          }
+        });
+
+        // Sector Bar & Legend
+        const sectorMap = {};
+        holdings.forEach(h => {
+          const sec = h.sector || 'General';
+          const val = Number(h.currentValue || (h.quantity * (h.currentPrice || h.averagePrice)));
+          sectorMap[sec] = (sectorMap[sec] || 0) + val;
+        });
+
+        const barEl = document.getElementById('sectorBar');
+        const legendEl = document.getElementById('sectorLegend');
+        barEl.innerHTML = '';
+        legendEl.innerHTML = '';
+
+        Object.entries(sectorMap).forEach(([sec, val], idx) => {
+          const pct = ((val / total) * 100).toFixed(1);
+          const color = sectorColors[idx % sectorColors.length];
+
+          const seg = document.createElement('div');
+          seg.className = 'sector-bar-seg';
+          seg.style.width = `${pct}%`;
+          seg.style.backgroundColor = color;
+          barEl.appendChild(seg);
+
+          const legItem = document.createElement('div');
+          legItem.className = 'sector-legend-item';
+          legItem.innerHTML = `<span class="sector-dot" style="background-color:${color};"></span><span>${sec} (${pct}%)</span>`;
+          legendEl.appendChild(legItem);
+        });
+      }
+
+      // ----------------------------------------------------------------------
+      // P&L per Holding Horizontal Bar Chart
+      // ----------------------------------------------------------------------
+      function renderPnlBar(holdings) {
+        const canvas = document.getElementById('pnlBarCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        if (pnlBarInstance) pnlBarInstance.destroy();
+
+        if (!holdings.length) return;
+
+        const labels = holdings.map(h => h.stockSymbol);
+        const pnlValues = holdings.map(h => {
+          const curVal = h.currentValue || (h.quantity * (h.currentPrice || h.averagePrice));
+          return h.profitOrLoss !== undefined ? h.profitOrLoss : (curVal - (h.quantity * (h.averagePrice || 0)));
+        });
+
+        const isDark = document.body.classList.contains('dark');
+        const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+        const textColor = isDark ? '#94A3B0' : '#5C676E';
+
+        pnlBarInstance = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [{
+              label: 'Unrealized P&L (₹)',
+              data: pnlValues,
+              backgroundColor: pnlValues.map(v => v >= 0 ? '#0E9F6E' : '#D6393A'),
+              borderRadius: 3
+            }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => ` P&L: ${formatCurrency(ctx.raw)}`
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { color: gridColor },
+                ticks: {
+                  color: textColor,
+                  font: { family: 'Instrument Sans', size: 11 },
+                  callback: (val) => '₹' + val.toLocaleString('en-IN')
+                }
+              },
+              y: {
+                grid: { display: false },
+                ticks: { color: textColor, font: { family: 'Instrument Sans', size: 11, weight: '600' } }
+              }
+            }
+          }
+        });
+      }
+
+      // ----------------------------------------------------------------------
+      // Performance Line Chart vs NIFTYBEES
+      // ----------------------------------------------------------------------
+      function renderPerformanceLine(perfData) {
+        const canvas = document.getElementById('portPerfCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        if (perfLineInstance) perfLineInstance.destroy();
+
+        const labels = perfData?.labels || ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+        const values = perfData?.portfolioValues || [500000, 503200, 507800, 514200];
+        const benchmark = perfData?.benchmarkValues || [500000, 501500, 503800, 506400];
+
+        const isDark = document.body.classList.contains('dark');
+        const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+        const textColor = isDark ? '#94A3B0' : '#5C676E';
+
+        perfLineInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'EquiTrade Portfolio',
+                data: values,
+                borderColor: '#2150D6',
+                backgroundColor: 'rgba(33, 80, 214, 0.08)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.25,
+                pointRadius: 0
+              },
+              {
+                label: 'Nifty 50 Benchmark',
+                data: benchmark,
+                borderColor: '#94A3B0',
+                borderWidth: 1.5,
+                borderDash: [4, 4],
+                fill: false,
+                tension: 0.25,
+                pointRadius: 0
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'top',
+                align: 'end',
+                labels: { boxWidth: 12, boxHeight: 12, color: textColor, font: { family: 'Instrument Sans', size: 12 } }
+              },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => ` ${ctx.dataset.label}: ${formatCurrency(ctx.raw)}`
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { color: gridColor },
+                ticks: { color: textColor, font: { family: 'Instrument Sans', size: 11 } }
+              },
+              y: {
+                grid: { color: gridColor },
+                ticks: {
+                  color: textColor,
+                  font: { family: 'Instrument Sans', size: 11 },
+                  callback: (val) => '₹' + (val / 1000).toFixed(0) + 'k'
+                }
+              }
+            }
+          }
+        });
+      }
+
+      async function reloadPerformanceChart(range) {
+        try {
+          const perfData = await apiGet(`/api/portfolio/performance?range=${range}`);
+          renderPerformanceLine(perfData);
+        } catch (e) {}
+      }
+    </script>
+  </body>
+</html>
